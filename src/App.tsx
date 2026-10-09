@@ -163,7 +163,7 @@ function App() {
                 <Info size={18} color="#64748b" /> About this data
               </div>
               <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '16px' }}>
-                Forecast retrieved at {format(new Date(), 'HH:mm on MMM dd, yyyy')} (your local time).
+                Forecast retrieved at {format(new Date(), "HH:mm 'on' MMM dd, yyyy")} (your local time).
               </p>
               <ul>
                 <li>
