@@ -105,6 +105,14 @@ function respond(statusCode, body) {
   };
 }
 
+const DISCLAIMER =
+  'This service uses modelled air-quality forecasts from Open-Meteo, not ' +
+  'real-time ground-station measurements. The Relative Pollution Score ' +
+  '(PM2.5 + 0.5×PM10) is a dimensionless comparison index and is NOT the ' +
+  'official CPCB AQI or any other regulatory standard. A "best available" ' +
+  'window recommendation does not guarantee safe air quality. Always consult ' +
+  'authoritative local advisories before outdoor activity.';
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
@@ -175,11 +183,3 @@ exports.handler = async (event) => {
     disclaimer: DISCLAIMER,
   });
 };
-
-const DISCLAIMER =
-  'This service uses modelled air-quality forecasts from Open-Meteo, not ' +
-  'real-time ground-station measurements. The Relative Pollution Score ' +
-  '(PM2.5 + 0.5×PM10) is a dimensionless comparison index and is NOT the ' +
-  'official CPCB AQI or any other regulatory standard. A "best available" ' +
-  'window recommendation does not guarantee safe air quality. Always consult ' +
-  'authoritative local advisories before outdoor activity.';
