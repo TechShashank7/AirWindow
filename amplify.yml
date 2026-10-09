@@ -1,0 +1,18 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # VITE_EVALUATE_API_URL is injected via Amplify → App settings → Environment variables.
+        # Leave it unset and the app falls back to local computation with no behaviour change.
+        - npm run build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*

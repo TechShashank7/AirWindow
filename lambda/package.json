@@ -1,0 +1,17 @@
+{
+  "name": "airwindow-lambda",
+  "version": "1.0.0",
+  "description": "AirWindow forecast evaluation Lambda function",
+  "type": "commonjs",
+  "main": "handler.js",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --runInBand",
+    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage --runInBand"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
