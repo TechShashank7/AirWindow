@@ -85,7 +85,16 @@ export function ForecastChart({ data }: ForecastChartProps) {
               tickLine={false}
             />
             <YAxis
+              yAxisId="left"
               tick={{ fontSize: 11, fill: '#94a3b8' }}
+              axisLine={false}
+              tickLine={false}
+              tickMargin={8}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 11, fill: '#64748b' }}
               axisLine={false}
               tickLine={false}
               tickMargin={8}
@@ -96,6 +105,7 @@ export function ForecastChart({ data }: ForecastChartProps) {
               wrapperStyle={{ fontSize: 12, color: '#64748b', paddingTop: 12 }}
             />
             <Area
+              yAxisId="left"
               type="monotone"
               dataKey="pm25"
               name="PM2.5 (µg/m³)"
@@ -107,6 +117,7 @@ export function ForecastChart({ data }: ForecastChartProps) {
               connectNulls={false}
             />
             <Area
+              yAxisId="left"
               type="monotone"
               dataKey="pm10"
               name="PM10 (µg/m³)"
@@ -118,6 +129,7 @@ export function ForecastChart({ data }: ForecastChartProps) {
               connectNulls={false}
             />
             <Area
+              yAxisId="right"
               type="monotone"
               dataKey="score"
               name="Relative Score"

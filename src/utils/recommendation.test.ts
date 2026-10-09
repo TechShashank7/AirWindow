@@ -5,8 +5,8 @@ import type { DataPoint } from './recommendation';
 describe('recommendation algorithm', () => {
   it('should correctly calculate pollution score', () => {
     expect(calculatePollutionScore(10, 20)).toBe(20); // 10 + 0.5*20
-    expect(calculatePollutionScore(null, null)).toBe(null);
-    expect(calculatePollutionScore(10, null)).toBe(10);
+    expect(calculatePollutionScore(null, null)).toBeNull();
+    expect(calculatePollutionScore(10, null)).toBeNull();
   });
 
   it('should find the best time window within preferred range', () => {

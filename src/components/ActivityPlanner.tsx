@@ -1,18 +1,25 @@
 import { useState } from 'react';
 import { Clock, Hourglass, CalendarRange, ArrowRight } from 'lucide-react';
-import { format, addHours, startOfHour } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface ActivityPlannerProps {
   onPlan: (duration: number, start: string, end: string) => void;
+  timezone: string;
 }
 
-export function ActivityPlanner({ onPlan }: ActivityPlannerProps) {
+export function ActivityPlanner({ onPlan, timezone }: ActivityPlannerProps) {
   const [duration, setDuration] = useState<number>(60);
 
-  const now = startOfHour(new Date());
+  // Generate 48 hours from the current moment, formatted in the location's timezone
+  const nowMs = Date.now();
   const timeOptions = Array.from({ length: 48 }).map((_, i) => {
-    const d = addHours(now, i);
-    return { value: format(d, "yyyy-MM-dd'T'HH:mm"), label: format(d, 'MMM dd, HH:mm') };
+    // We add i hours to the current time
+    const d = new Date(nowMs + i * 3600000);
+    // Format to start of the hour in the target timezone to match Open-Meteo's hourly forecast timestamps
+    return { 
+      value: formatInTimeZone(d, timezone, "yyyy-MM-dd'T'HH:00"), 
+      label: formatInTimeZone(d, timezone, "MMM dd, HH:00") 
+    };
   });
 
   const [startTime, setStartTime] = useState(timeOptions[0].value);

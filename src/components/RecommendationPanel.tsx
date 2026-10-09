@@ -15,13 +15,16 @@ function formatTimeRange(window: DataPoint[]): string {
 }
 
 function getStatus(score: number) {
-  if (score <= 35) return { cls: 'good', label: 'Good',     Icon: ShieldCheck };
-  if (score <= 70) return { cls: 'mid',  label: 'Moderate', Icon: ShieldAlert };
-  return               { cls: 'poor', label: 'Poor',     Icon: ShieldAlert };
+  if (score <= 35) return { cls: 'good', label: 'Good Quality',     Icon: ShieldCheck };
+  if (score <= 70) return { cls: 'mid',  label: 'Moderate Quality', Icon: ShieldAlert };
+  return               { cls: 'poor', label: 'Poor Quality',     Icon: ShieldAlert };
 }
 
 export function RecommendationPanel({ result }: RecommendationPanelProps) {
   const { cls, label, Icon } = getStatus(result.averageScore);
+  
+  // Distinguish between a purely good recommendation and just the "least bad" available window
+  const headline = result.averageScore > 70 ? 'Best Available Window (Caution)' : 'Recommended Time Window';
 
   return (
     <div className={`rec-panel ${cls}`}>
@@ -32,7 +35,7 @@ export function RecommendationPanel({ result }: RecommendationPanelProps) {
 
         <div className="rec-body">
           <div className="rec-headline">
-            <h3>Recommended Time Window</h3>
+            <h3>{headline}</h3>
             <span className="rec-badge">{label}</span>
           </div>
 

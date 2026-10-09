@@ -18,11 +18,8 @@ export interface RecommendationResult {
 // Relative Pollution Score formula
 // PM2.5 is weighted heavier than PM10 due to higher health impact.
 export function calculatePollutionScore(pm25: number | null, pm10: number | null): number | null {
-  if (pm25 === null && pm10 === null) return null;
-  const safePm25 = pm25 ?? 0;
-  const safePm10 = pm10 ?? 0;
-  // If one is missing but the other is present, we still calculate a score
-  return safePm25 + 0.5 * safePm10;
+  if (pm25 === null || pm10 === null) return null;
+  return pm25 + 0.5 * pm10;
 }
 
 export function processForecastData(data: AirQualityForecast): DataPoint[] {
