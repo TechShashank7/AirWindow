@@ -6,8 +6,7 @@ frontend:
         - npm ci
     build:
       commands:
-        # VITE_EVALUATE_API_URL is injected via Amplify → App settings → Environment variables.
-        # Leave it unset and the app falls back to local computation with no behaviour change.
+        - echo "VITE_EVALUATE_API_URL=$VITE_EVALUATE_API_URL" >> .env
         - npm run build
   artifacts:
     baseDirectory: dist
