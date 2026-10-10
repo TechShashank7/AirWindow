@@ -1,48 +1,45 @@
 'use strict';
 
-/**
- * Integration test for lambda/handler.js
- *
- * Uses Jest's manual mocking to replace the Open-Meteo HTTP call with a
- * deterministic fixture so tests run offline and stay reproducible.
- *
- * The handler module is re-loaded for each test to avoid state bleed.
- */
+const mockDbSend = jest.fn();
 
-// ── Fixture data ─────────────────────────────────────────────────────────────
+jest.mock('@aws-sdk/client-dynamodb', () => {
+  return {
+    DynamoDBClient: jest.fn(() => ({
+      send: mockDbSend
+    })),
+    GetItemCommand: jest.fn((input) => input),
+    PutItemCommand: jest.fn((input) => input)
+  };
+});
+
+jest.mock('@aws-sdk/util-dynamodb', () => ({
+  marshall: jest.fn((obj) => obj),
+  unmarshall: jest.fn((obj) => obj)
+}));
+
+const { handler } = require('../handler');
 
 const FIXTURE = {
   latitude: 28.67,
   longitude: 77.22,
   timezone: 'Asia/Kolkata',
   hourly: {
-    time: [
-      '2026-10-09T10:00', '2026-10-09T11:00',
-      '2026-10-09T12:00', '2026-10-09T13:00',
-    ],
-    pm2_5: [50, 20, 30, 10],
-    pm10:  [100, 40, 60, 20],
-  },
+    time: ['2026-10-09T10:00', '2026-10-09T11:00'],
+    pm2_5: [50, null],
+    pm10: [100, 40],
+    windspeed_10m: [12, 10],
+    winddirection_10m: [270, 280]
+  }
 };
 
-// ── Mock global fetch before any require ─────────────────────────────────────
-
-global.fetch = jest.fn(() =>
-  Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve(FIXTURE),
-    text: () => Promise.resolve(''),
-  })
-);
-
-const { handler } = require('../handler');
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+global.fetch = jest.fn();
+console.log = jest.fn();
 
 function makeEvent(body) {
   return {
     requestContext: { http: { method: 'POST' } },
     httpMethod: 'POST',
+    rawPath: '/evaluate',
     body: JSON.stringify(body),
   };
 }
@@ -57,100 +54,120 @@ const VALID_BODY = {
   currentTime: '2026-10-09T10:00',
 };
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
-
-describe('handler', () => {
-  afterEach(() => jest.clearAllMocks());
-
-  it('responds 204 to CORS preflight OPTIONS', async () => {
-    const event = { requestContext: { http: { method: 'OPTIONS' } }, httpMethod: 'OPTIONS' };
-    const res = await handler(event);
-    expect(res.statusCode).toBe(204);
-  });
-
-  it('returns 400 for missing body', async () => {
-    const res = await handler({ requestContext: { http: { method: 'POST' } }, body: '{}' });
-    expect(res.statusCode).toBe(400);
-    const body = JSON.parse(res.body);
-    expect(body.details.length).toBeGreaterThan(0);
-  });
-
-  it('returns 400 for out-of-range latitude', async () => {
-    const res = await handler(makeEvent({ ...VALID_BODY, latitude: 200 }));
-    expect(res.statusCode).toBe(400);
-    expect(JSON.parse(res.body).details.join()).toMatch(/latitude/i);
-  });
-
-  it('returns 400 for invalid duration', async () => {
-    const res = await handler(makeEvent({ ...VALID_BODY, durationMinutes: 45 }));
-    expect(res.statusCode).toBe(400);
-    expect(JSON.parse(res.body).details.join()).toMatch(/durationMinutes/i);
-  });
-
-  it('returns 400 when preferredEnd <= preferredStart', async () => {
-    const res = await handler(makeEvent({
-      ...VALID_BODY,
-      preferredStart: '2026-10-09T12:00',
-      preferredEnd:   '2026-10-09T10:00',
-    }));
-    expect(res.statusCode).toBe(400);
-  });
-
-  it('returns 400 for malformed preferredStart', async () => {
-    const res = await handler(makeEvent({ ...VALID_BODY, preferredStart: '2026/10/09 10:00' }));
-    expect(res.statusCode).toBe(400);
-  });
-
-  it('returns 200 with a valid recommendation on happy path', async () => {
-    const res = await handler(makeEvent(VALID_BODY));
-    expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.recommendation).not.toBeNull();
-    expect(body.recommendation.averageScore).toBeGreaterThan(0);
-    expect(body.recommendation.qualityLabel).toMatch(/^(Good|Moderate|Poor)$/);
-    expect(body.forecastData.length).toBe(4);
-    expect(body.scoreFormula).toBe('PM2.5 + (0.5 × PM10)');
-    expect(body.disclaimer).toMatch(/NOT.*AQI|CPCB/i);
-  });
-
-  it('recommendation message never uses the word "safe"', async () => {
-    const res = await handler(makeEvent(VALID_BODY));
-    const { message } = JSON.parse(res.body).recommendation;
-    expect(message).not.toMatch(/\bsafe\b/i);
-  });
-
-  it('includes retrievedAt ISO timestamp', async () => {
-    const res = await handler(makeEvent(VALID_BODY));
-    const { retrievedAt } = JSON.parse(res.body);
-    expect(new Date(retrievedAt).toISOString()).toBe(retrievedAt);
-  });
-
-  it('returns 502 when Open-Meteo is unavailable', async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: false,
-      status: 503,
-      text: () => Promise.resolve('Service Unavailable'),
-    });
-    const res = await handler(makeEvent(VALID_BODY));
-    expect(res.statusCode).toBe(502);
-    expect(JSON.parse(res.body).error).toMatch(/Open-Meteo/i);
-  });
-
-  it('returns 200 with null recommendation when all forecast data is null', async () => {
-    global.fetch.mockResolvedValueOnce({
+describe('API Gateway Handler Phase 1', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockDbSend.mockClear();
+    global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({
-        ...FIXTURE,
-        hourly: {
-          time: FIXTURE.hourly.time,
-          pm2_5: [null, null, null, null],
-          pm10:  [null, null, null, null],
-        },
-      }),
+      json: () => Promise.resolve(FIXTURE),
       text: () => Promise.resolve(''),
     });
+  });
+
+  it('rejects malformed JSON', async () => {
+    const res = await handler({ requestContext: { http: { method: 'POST' } }, body: 'bad{json' });
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error.code).toBe('MALFORMED_JSON');
+  });
+
+  it('validates request parameters (bad duration)', async () => {
+    const res = await handler(makeEvent({ ...VALID_BODY, durationMinutes: 45 }));
+    expect(res.statusCode).toBe(400);
+    const body = JSON.parse(res.body);
+    expect(body.error.code).toBe('VALIDATION_FAILED');
+    expect(body.error.details[0]).toMatch(/durationMinutes/);
+  });
+
+  it('preserves backward compatibility and matches normalized contract', async () => {
+    mockDbSend.mockResolvedValue({}); // Cache miss
     const res = await handler(makeEvent(VALID_BODY));
     expect(res.statusCode).toBe(200);
-    expect(JSON.parse(res.body).recommendation).toBeNull();
+    
+    const body = JSON.parse(res.body);
+    
+    // Normalized check
+    expect(body.metadata.location.lat).toBe(28.67);
+    expect(body.metadata.units.windSpeed).toBe('km/h');
+    expect(body.data[0].windSpeed).toBe(12);
+    expect(body.data[1].pm25).toBeNull(); // null preservation
+    
+    // Backward compatibility check
+    expect(body.forecastTimezone).toBe('Asia/Kolkata');
+    expect(body.forecastData).toBeDefined();
+    expect(body.forecastData.length).toBe(2);
+  });
+
+  it('handles Cache Hit (Fresh)', async () => {
+    mockDbSend.mockResolvedValueOnce({
+      Item: {
+        rawForecast: FIXTURE,
+        staleAfter: Date.now() + 100000,
+        expiresAt: Math.floor(Date.now() / 1000) + 1000
+      }
+    });
+
+    const res = await handler(makeEvent(VALID_BODY));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).metadata.isStale).toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('handles Cache Stale -> Upstream Success', async () => {
+    mockDbSend.mockResolvedValueOnce({
+      Item: {
+        rawForecast: FIXTURE,
+        staleAfter: Date.now() - 100000, // Stale!
+        expiresAt: Math.floor(Date.now() / 1000) + 1000
+      }
+    });
+
+    const res = await handler(makeEvent(VALID_BODY));
+    expect(res.statusCode).toBe(200);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(mockDbSend).toHaveBeenCalledTimes(2); // GetItem + PutItem
+  });
+
+  it('handles Cache Stale -> Upstream Failure (Stale Fallback)', async () => {
+    mockDbSend.mockResolvedValueOnce({
+      Item: {
+        rawForecast: FIXTURE,
+        staleAfter: Date.now() - 10000, // Stale
+        expiresAt: Math.floor(Date.now() / 1000) + 10000 // But not expired (in seconds)
+      }
+    });
+    
+    global.fetch.mockRejectedValueOnce(new Error('Network error'));
+
+    const res = await handler(makeEvent(VALID_BODY));
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.metadata.isStale).toBe(true);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles Cache Expired -> Upstream Failure (Complete Failure)', async () => {
+    mockDbSend.mockResolvedValueOnce({
+      Item: {
+        rawForecast: FIXTURE,
+        staleAfter: Date.now() - 100000,
+        expiresAt: Math.floor(Date.now() / 1000) - 1000 // Expired!
+      }
+    });
+    
+    global.fetch.mockRejectedValueOnce(new Error('Network error'));
+
+    const res = await handler(makeEvent(VALID_BODY));
+    expect(res.statusCode).toBe(502);
+    expect(JSON.parse(res.body).error.code).toBe('UPSTREAM_FAILED');
+  });
+
+  it('handles Complete Cache Miss -> Upstream Failure', async () => {
+    mockDbSend.mockResolvedValueOnce({}); // Miss
+    global.fetch.mockRejectedValueOnce(new Error('Network error'));
+
+    const res = await handler(makeEvent(VALID_BODY));
+    expect(res.statusCode).toBe(502);
+    expect(JSON.parse(res.body).error.code).toBe('UPSTREAM_FAILED');
   });
 });

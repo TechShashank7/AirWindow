@@ -12,6 +12,8 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1149.0",
+    "@aws-sdk/util-dynamodb": "^3.996.9",
     "jest": "^29.7.0"
   }
 }

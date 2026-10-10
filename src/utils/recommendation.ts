@@ -4,6 +4,8 @@ export interface DataPoint {
   time: string; // ISO string without Z, e.g. "2026-10-09T00:00"
   pm25: number | null;
   pm10: number | null;
+  windSpeed: number | null;
+  windDir: number | null;
   score: number | null;
 }
 
@@ -22,15 +24,26 @@ export function calculatePollutionScore(pm25: number | null, pm10: number | null
   return pm25 + 0.5 * pm10;
 }
 
-export function processForecastData(data: AirQualityForecast): DataPoint[] {
+export function processForecastData(data: AirQualityForecast & { hourly: any }): DataPoint[] {
   const points: DataPoint[] = [];
   const len = data.hourly.time.length;
   for (let i = 0; i < len; i++) {
+    const pm25 = data.hourly.pm2_5[i] ?? null;
+    const pm10 = data.hourly.pm10[i] ?? null;
+    const windSpeed = (data.hourly.windspeed_10m && data.hourly.windspeed_10m[i] !== undefined)
+      ? data.hourly.windspeed_10m[i]
+      : null;
+    const windDir = (data.hourly.winddirection_10m && data.hourly.winddirection_10m[i] !== undefined)
+      ? data.hourly.winddirection_10m[i]
+      : null;
+
     points.push({
       time: data.hourly.time[i],
-      pm25: data.hourly.pm2_5[i],
-      pm10: data.hourly.pm10[i],
-      score: calculatePollutionScore(data.hourly.pm2_5[i], data.hourly.pm10[i]),
+      pm25,
+      pm10,
+      windSpeed,
+      windDir,
+      score: calculatePollutionScore(pm25, pm10),
     });
   }
   return points;

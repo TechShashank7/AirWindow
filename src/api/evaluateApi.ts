@@ -19,12 +19,19 @@ export interface EvaluateRequest {
 }
 
 export interface EvaluateResponse {
-  retrievedAt: string;
-  forecastTimezone: string;
-  forecastData: Array<{
+  metadata: {
+    location: { lat: number; lon: number; timezone: string };
+    units: { pm25: string; pm10: string; windSpeed: string; windDir: string };
+    retrievedAt: string;
+    isStale: boolean;
+    sources: string[];
+  };
+  data: Array<{
     time: string;
     pm25: number | null;
     pm10: number | null;
+    windSpeed: number | null;
+    windDir: number | null;
     score: number | null;
   }>;
   recommendation: {

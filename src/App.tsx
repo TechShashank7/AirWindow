@@ -53,6 +53,17 @@ function App() {
           preferredEnd: end,
           currentTime: currentTimeStr
         });
+        
+        // Update the global data points with the cached/normalized response
+        if (res.data) {
+          setDataPoints(res.data as unknown as DataPoint[]);
+        }
+        
+        // Stale data warning
+        if (res.metadata?.isStale) {
+          console.warn("Using stale cache data due to upstream failure.");
+        }
+
         setRecommendation(res.recommendation);
       } catch (err) {
         console.error("Backend evaluate failed:", err);

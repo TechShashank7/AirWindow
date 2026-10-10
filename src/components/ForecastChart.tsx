@@ -141,6 +141,19 @@ export function ForecastChart({ data }: ForecastChartProps) {
               activeDot={{ r: 4 }}
               connectNulls={false}
             />
+            <Area
+              yAxisId="right"
+              type="monotone"
+              dataKey="windSpeed"
+              name="Wind Speed (km/h)"
+              stroke="#8b5cf6"
+              strokeWidth={2}
+              strokeDasharray="2 4"
+              fill="none"
+              dot={false}
+              activeDot={{ r: 4 }}
+              connectNulls={false}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>

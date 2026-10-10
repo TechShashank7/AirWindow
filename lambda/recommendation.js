@@ -1,22 +1,17 @@
 /**
  * recommendation.js
  *
- * Ported directly from src/utils/recommendation.ts.
- * Pure functions — no AWS SDK, no HTTP calls.
- *
  * Relative Pollution Score: PM2.5 + (0.5 × PM10)
- *   • PM2.5 is weighted higher due to its greater respiratory health impact.
- *   • This is a DIMENSIONLESS COMPARISON INDEX only.
- *   • It is NOT India's official CPCB AQI and carries NO health-safety guarantee.
+ *
+ * Updates in Phase 1:
+ * - Maintains explicit nulls for missing values (never imputed).
+ * - Maps Wind Speed and Wind Direction into the data array.
  */
 
 'use strict';
 
 /**
- * Returns null if either value is missing — we never impute zeros for nulls.
- * @param {number|null} pm25
- * @param {number|null} pm10
- * @returns {number|null}
+ * Returns null if either value is missing.
  */
 function calculatePollutionScore(pm25, pm10) {
   if (pm25 === null || pm25 === undefined || pm10 === null || pm10 === undefined) {
@@ -27,8 +22,7 @@ function calculatePollutionScore(pm25, pm10) {
 
 /**
  * Build DataPoint array from a raw Open-Meteo hourly response.
- * @param {{ hourly: { time: string[], pm2_5: (number|null)[], pm10: (number|null)[] } }} data
- * @returns {Array<{ time: string, pm25: number|null, pm10: number|null, score: number|null }>}
+ * Safely extracts PM and Wind data, preserving nulls.
  */
 function processForecastData(data) {
   const points = [];
@@ -36,10 +30,21 @@ function processForecastData(data) {
   for (let i = 0; i < len; i++) {
     const pm25 = data.hourly.pm2_5[i] ?? null;
     const pm10 = data.hourly.pm10[i] ?? null;
+    
+    // Wind data added in Phase 1 (safeguarded if upstream omits it)
+    const windSpeed = (data.hourly.windspeed_10m && data.hourly.windspeed_10m[i] !== undefined) 
+      ? data.hourly.windspeed_10m[i] 
+      : null;
+    const windDir = (data.hourly.winddirection_10m && data.hourly.winddirection_10m[i] !== undefined)
+      ? data.hourly.winddirection_10m[i] 
+      : null;
+
     points.push({
       time: data.hourly.time[i],
       pm25,
       pm10,
+      windSpeed,
+      windDir,
       score: calculatePollutionScore(pm25, pm10),
     });
   }
@@ -48,35 +53,16 @@ function processForecastData(data) {
 
 /**
  * Find the best continuous time window for an outdoor activity.
- *
- * Algorithm:
- *   1. Exclude all data points in the past (strictly < currentTimeStr).
- *   2. Determine required hours: 30 min → 1 h slot, 60 min → 1 h slot, 90 min → 2 h slots.
- *   3. Scan every sliding window that fits completely inside [preferredStart, preferredEnd].
- *      Skip any window containing a null score — we never silently treat nulls as zero.
- *   4. If no valid window exists in the preferred range, fall back to the global best future window.
- *   5. Return structured result including the "original" preferred window score for comparison.
- *
- * @param {Array} dataPoints
- * @param {number} durationMinutes  30 | 60 | 90
- * @param {string} preferredStartTime  "YYYY-MM-DDTHH:mm"
- * @param {string} preferredEndTime    "YYYY-MM-DDTHH:mm"
- * @param {string} currentTimeStr      "YYYY-MM-DDTHH:mm"
- * @returns {{ recommendedWindow, averageScore, isInPreferredRange, originalWindow, originalAverageScore, qualityLabel, message } | null}
  */
 function getBestTimeWindow(dataPoints, durationMinutes, preferredStartTime, preferredEndTime, currentTimeStr) {
-  // 1. Future-only filter — compare first 16 chars "YYYY-MM-DDTHH:mm"
   const currentPrefix = currentTimeStr.substring(0, 16);
   const futurePoints = dataPoints.filter(p => p.time.substring(0, 16) >= currentPrefix);
 
   if (futurePoints.length === 0) return null;
 
-  // 2. Required hours (30-min activities still need a full 1-hour forecast slot)
   const requiredHours = durationMinutes <= 60 ? 1 : 2;
-
   if (futurePoints.length < requiredHours) return null;
 
-  // Helper: average score for a window, returns Infinity if any value is null
   function avgScore(window) {
     let total = 0;
     for (const p of window) {
@@ -86,7 +72,6 @@ function getBestTimeWindow(dataPoints, durationMinutes, preferredStartTime, pref
     return total / window.length;
   }
 
-  // 3a. Best window within preferred range
   let bestWindow = null;
   let bestScore = Infinity;
 
@@ -103,7 +88,6 @@ function getBestTimeWindow(dataPoints, durationMinutes, preferredStartTime, pref
 
   const isInPreferredRange = bestWindow !== null;
 
-  // 3b. Fallback: best global future window (used when preferred range has no data)
   let fallbackWindow = null;
   let fallbackScore  = Infinity;
 
@@ -120,7 +104,6 @@ function getBestTimeWindow(dataPoints, durationMinutes, preferredStartTime, pref
 
   if (!finalWindow || finalScore === Infinity) return null;
 
-  // 4. Compute the "original" (first-available-in-preferred-range) window for comparison
   let originalWindow = null;
   let originalAverageScore = null;
 
@@ -137,7 +120,6 @@ function getBestTimeWindow(dataPoints, durationMinutes, preferredStartTime, pref
     }
   }
 
-  // 5. Quality label and message
   const qualityLabel = finalScore <= 35 ? 'Good' : finalScore <= 70 ? 'Moderate' : 'Poor';
 
   let message;
