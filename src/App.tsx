@@ -4,6 +4,7 @@ import { ForecastChart } from './components/ForecastChart';
 import { ActivityPlanner } from './components/ActivityPlanner';
 import { RecommendationPanel } from './components/RecommendationPanel';
 import { getAirQualityForecast } from './api/openmeteo';
+import { isBackendEnabled, callEvaluateApi } from './api/evaluateApi';
 import type { LocationResult } from './api/openmeteo';
 import { processForecastData, getBestTimeWindow } from './utils/recommendation';
 import type { DataPoint, RecommendationResult } from './utils/recommendation';
@@ -35,12 +36,36 @@ function App() {
     }
   };
 
-  const handlePlanActivity = (duration: number, start: string, end: string) => {
+  const handlePlanActivity = async (duration: number, start: string, end: string) => {
     if (!dataPoints.length || !location) return;
     const tz = location.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     const currentTimeStr = formatInTimeZone(new Date(), tz, "yyyy-MM-dd'T'HH:mm");
-    const result = getBestTimeWindow(dataPoints, duration, start, end, currentTimeStr);
-    setRecommendation(result);
+
+    if (isBackendEnabled()) {
+      try {
+        setLoading(true);
+        const res = await callEvaluateApi({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          timezone: tz,
+          durationMinutes: duration as any,
+          preferredStart: start,
+          preferredEnd: end,
+          currentTime: currentTimeStr
+        });
+        setRecommendation(res.recommendation);
+      } catch (err) {
+        console.error("Backend evaluate failed:", err);
+        // fallback to local computation if backend fails
+        const result = getBestTimeWindow(dataPoints, duration, start, end, currentTimeStr);
+        setRecommendation(result);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      const result = getBestTimeWindow(dataPoints, duration, start, end, currentTimeStr);
+      setRecommendation(result);
+    }
   };
 
   // Latest data point for the "current reading" stat cards
