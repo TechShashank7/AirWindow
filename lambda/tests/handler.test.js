@@ -124,7 +124,7 @@ describe('API Gateway Handler Phase 1', () => {
 
     const res = await handler(makeEvent(VALID_BODY));
     expect(res.statusCode).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
     expect(mockDbSend).toHaveBeenCalledTimes(2); // GetItem + PutItem
   });
 
@@ -143,7 +143,7 @@ describe('API Gateway Handler Phase 1', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.metadata.isStale).toBe(true);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('handles Cache Expired -> Upstream Failure (Complete Failure)', async () => {

@@ -72,14 +72,27 @@ function getCacheKey(lat, lon) {
 }
 
 async function fetchFromOpenMeteo(lat, lon) {
-  const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5,windspeed_10m,winddirection_10m&timezone=auto&forecast_days=2`;
+  const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&timezone=auto&forecast_days=2`;
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=windspeed_10m,winddirection_10m&timezone=auto&forecast_days=2`;
   
-  const res = await fetch(url);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Open-Meteo HTTP ${res.status}: ${text}`);
+  const [aqRes, weatherRes] = await Promise.all([
+    fetch(aqUrl),
+    fetch(weatherUrl)
+  ]);
+
+  if (!aqRes.ok || !weatherRes.ok) {
+    throw new Error(`Open-Meteo HTTP Error: AQ=${aqRes.status} Weather=${weatherRes.status}`);
   }
-  return res.json();
+
+  const aqData = await aqRes.json();
+  const weatherData = await weatherRes.json();
+
+  if (aqData.hourly && weatherData.hourly) {
+    aqData.hourly.windspeed_10m = weatherData.hourly.windspeed_10m;
+    aqData.hourly.winddirection_10m = weatherData.hourly.winddirection_10m;
+  }
+
+  return aqData;
 }
 
 async function getForecastData(lat, lon) {

@@ -99,6 +99,11 @@ export function ForecastChart({ data }: ForecastChartProps) {
               tickLine={false}
               tickMargin={8}
             />
+            <YAxis
+              yAxisId="wind"
+              orientation="right"
+              hide={true}
+            />
             <Tooltip content={<CustomTooltip />} />
             <Legend
               iconType="circle"
@@ -142,7 +147,7 @@ export function ForecastChart({ data }: ForecastChartProps) {
               connectNulls={false}
             />
             <Area
-              yAxisId="right"
+              yAxisId="wind"
               type="monotone"
               dataKey="windSpeed"
               name="Wind Speed (km/h)"
