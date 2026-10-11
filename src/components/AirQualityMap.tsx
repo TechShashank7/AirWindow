@@ -105,10 +105,15 @@ export function AirQualityMap({ location }: AirQualityMapProps) {
 
     if (googleApiKey) {
       loadGoogleMaps(googleApiKey)
-        .then((googleObj) => {
+        .then(async (googleObj) => {
           if (isCancelled || !mapContainerRef.current) return;
           try {
-            const gMap = new googleObj.maps.Map(mapContainerRef.current, {
+            let MapClass = googleObj.maps.Map;
+            if (!MapClass && (googleObj.maps as any).importLibrary) {
+              const mapsLib = await (googleObj.maps as any).importLibrary('maps');
+              MapClass = mapsLib.Map;
+            }
+            const gMap = new MapClass(mapContainerRef.current, {
               center: { lat: location.latitude, lng: location.longitude },
               zoom: 11,
               mapTypeControl: false,

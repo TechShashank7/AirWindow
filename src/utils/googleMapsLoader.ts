@@ -5,7 +5,7 @@ export function loadGoogleMaps(apiKey: string): Promise<typeof google> {
     return Promise.reject(new Error('Window is not available'));
   }
 
-  if ((window as any).google?.maps) {
+  if ((window as any).google?.maps?.Map) {
     return Promise.resolve((window as any).google);
   }
 
@@ -14,36 +14,90 @@ export function loadGoogleMaps(apiKey: string): Promise<typeof google> {
   }
 
   googleMapsPromise = new Promise((resolve, reject) => {
+    if ((window as any).google?.maps?.Map) {
+      resolve((window as any).google);
+      return;
+    }
+
+    const callbackName = `__airwindow_gmaps_cb`;
+    let settled = false;
+
+    (window as any)[callbackName] = async () => {
+      if (settled) return;
+      settled = true;
+      try {
+        if ((window as any).google?.maps?.importLibrary) {
+          await (window as any).google.maps.importLibrary('maps');
+        }
+        delete (window as any)[callbackName];
+        resolve((window as any).google);
+      } catch (err) {
+        delete (window as any)[callbackName];
+        googleMapsPromise = null;
+        reject(err);
+      }
+    };
+
+    const prevAuthFailure = (window as any).gm_authFailure;
+    (window as any).gm_authFailure = () => {
+      console.warn('Google Maps API authentication failed: Check Maps JavaScript API status in Google Cloud Console.');
+      if (typeof prevAuthFailure === 'function') prevAuthFailure();
+      if (!settled) {
+        settled = true;
+        delete (window as any)[callbackName];
+        googleMapsPromise = null;
+        reject(new Error('Google Maps authentication failed (gm_authFailure). Maps JavaScript API may not be enabled.'));
+      }
+    };
+
     const existing = document.querySelector<HTMLScriptElement>(
       'script[src*="maps.googleapis.com/maps/api/js"]'
     );
     if (existing) {
-      if ((window as any).google?.maps) {
-        resolve((window as any).google);
-      } else {
-        existing.addEventListener('load', () => resolve((window as any).google));
-        existing.addEventListener('error', (err) => reject(err));
-      }
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if ((window as any).google?.maps?.Map) {
+          clearInterval(interval);
+          if (!settled) {
+            settled = true;
+            resolve((window as any).google);
+          }
+        } else if (attempts > 40) {
+          clearInterval(interval);
+          if (!settled) {
+            settled = true;
+            googleMapsPromise = null;
+            reject(new Error('Timed out waiting for existing Google Maps script'));
+          }
+        }
+      }, 50);
       return;
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places,geometry&loading=async`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callbackName}&v=weekly`;
     script.async = true;
     script.defer = true;
-    script.onload = () => {
-      if ((window as any).google?.maps) {
-        resolve((window as any).google);
-      } else {
-        reject(new Error('Google Maps script loaded but google.maps is not available'));
-      }
-    };
     script.onerror = (err) => {
-      googleMapsPromise = null;
-      reject(err);
+      if (!settled) {
+        settled = true;
+        delete (window as any)[callbackName];
+        googleMapsPromise = null;
+        reject(err);
+      }
     };
 
     document.head.appendChild(script);
+
+    setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        delete (window as any)[callbackName];
+        googleMapsPromise = null;
+        reject(new Error('Google Maps script load timed out'));
+      }
+    }, 8000);
   });
 
   return googleMapsPromise;
