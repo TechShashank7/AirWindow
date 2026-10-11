@@ -3,6 +3,7 @@ import type { LocationResult } from '../api/openmeteo';
 import { fetchSpatialForecastGrid } from '../api/openmeteo';
 import type { GridPoint } from '../utils/mapGrid';
 import { getTierForPM25, getTierForScore, getTierForPM10 } from '../utils/mapGrid';
+import { loadGoogleMaps } from '../utils/googleMapsLoader';
 import { MapPin, Info, RefreshCw, AlertTriangle, Wind, Compass } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -21,9 +22,21 @@ export function AirQualityMap({ location }: AirQualityMapProps) {
   const [selectedPointId, setSelectedPointId] = useState<string>('center');
   const [metric, setMetric] = useState<MetricMode>('pm25');
 
+  // Read Google Maps API key from Vite environment variables (e.g. AWS Amplify or .env.local)
+  const isTestEnv = import.meta.env.MODE === 'test';
+  const googleApiKey = (!isTestEnv && (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim()) || '';
+  const [activeEngine, setActiveEngine] = useState<'google' | 'leaflet'>(googleApiKey ? 'google' : 'leaflet');
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const markersGroupRef = useRef<L.LayerGroup | null>(null);
+
+  // Leaflet refs
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const leafletMarkersGroupRef = useRef<L.LayerGroup | null>(null);
+
+  // Google Maps refs
+  const googleMapRef = useRef<google.maps.Map | null>(null);
+  const googleCirclesRef = useRef<google.maps.Circle[]>([]);
+  const googleMarkersRef = useRef<google.maps.Marker[]>([]);
 
   // Fetch 9-point spatial grid on location change
   const loadGrid = async () => {
@@ -71,81 +84,197 @@ export function AirQualityMap({ location }: AirQualityMapProps) {
     return 'µg/m³';
   };
 
-  // Initialize Leaflet map
+  // ─── Initialize Map (Google Maps if key provided, else Leaflet fallback) ───
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
-      mapInstanceRef.current = null;
+    let isCancelled = false;
+
+    // Cleanup previous maps
+    if (leafletMapRef.current) {
+      leafletMapRef.current.remove();
+      leafletMapRef.current = null;
+      leafletMarkersGroupRef.current = null;
+    }
+    if (googleMapRef.current) {
+      googleCirclesRef.current.forEach((c) => c.setMap(null));
+      googleMarkersRef.current.forEach((m) => m.setMap(null));
+      googleCirclesRef.current = [];
+      googleMarkersRef.current = [];
+      googleMapRef.current = null;
     }
 
-    try {
-      const map = L.map(mapContainerRef.current, {
-        center: [location.latitude, location.longitude],
-        zoom: 11,
-        zoomControl: true,
-        scrollWheelZoom: false,
-      });
-
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-      }).addTo(map);
-
-      const markersGroup = L.layerGroup().addTo(map);
-      markersGroupRef.current = markersGroup;
-      mapInstanceRef.current = map;
-
-      // Invalidate size after layout settles
-      const timer = setTimeout(() => {
-        map.invalidateSize();
-      }, 250);
-
-      return () => {
-        clearTimeout(timer);
-        map.remove();
-        mapInstanceRef.current = null;
-        markersGroupRef.current = null;
-      };
-    } catch (e) {
-      console.warn('Map initialization skipped (e.g. during headless test):', e);
+    if (googleApiKey) {
+      loadGoogleMaps(googleApiKey)
+        .then((googleObj) => {
+          if (isCancelled || !mapContainerRef.current) return;
+          try {
+            const gMap = new googleObj.maps.Map(mapContainerRef.current, {
+              center: { lat: location.latitude, lng: location.longitude },
+              zoom: 11,
+              mapTypeControl: false,
+              streetViewControl: false,
+              fullscreenControl: false,
+              zoomControl: true,
+              styles: [
+                { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+                { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+              ],
+            });
+            googleMapRef.current = gMap;
+            setActiveEngine('google');
+          } catch (initErr) {
+            console.warn('Google Maps initialization failed, falling back to Leaflet:', initErr);
+            initLeaflet();
+          }
+        })
+        .catch((err) => {
+          if (isCancelled) return;
+          console.warn('Google Maps script load failed, using Leaflet fallback:', err);
+          initLeaflet();
+        });
+    } else {
+      initLeaflet();
     }
-  }, [location.latitude, location.longitude]);
 
-  // Update map markers whenever points, selected point, or metric changes
+    function initLeaflet() {
+      if (isCancelled || !mapContainerRef.current) return;
+      try {
+        const map = L.map(mapContainerRef.current, {
+          center: [location.latitude, location.longitude],
+          zoom: 11,
+          zoomControl: true,
+          scrollWheelZoom: false,
+        });
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
+          subdomains: 'abcd',
+          maxZoom: 19,
+        }).addTo(map);
+
+        const markersGroup = L.layerGroup().addTo(map);
+        leafletMarkersGroupRef.current = markersGroup;
+        leafletMapRef.current = map;
+        setActiveEngine('leaflet');
+
+        setTimeout(() => {
+          if (!isCancelled && leafletMapRef.current) {
+            leafletMapRef.current.invalidateSize();
+          }
+        }, 250);
+      } catch (e) {
+        console.warn('Leaflet initialization skipped:', e);
+      }
+    }
+
+    return () => {
+      isCancelled = true;
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+        leafletMarkersGroupRef.current = null;
+      }
+      if (googleMapRef.current) {
+        googleCirclesRef.current.forEach((c) => c.setMap(null));
+        googleMarkersRef.current.forEach((m) => m.setMap(null));
+        googleCirclesRef.current = [];
+        googleMarkersRef.current = [];
+        googleMapRef.current = null;
+      }
+    };
+  }, [location.latitude, location.longitude, googleApiKey]);
+
+  // ─── Update Markers / Overlays for Active Engine ───
   useEffect(() => {
-    const map = mapInstanceRef.current;
-    const markersGroup = markersGroupRef.current;
-    if (!map || !markersGroup || points.length === 0) return;
+    if (points.length === 0) return;
 
-    markersGroup.clearLayers();
+    // 1. Update Google Maps overlays if active
+    if (activeEngine === 'google' && googleMapRef.current && (window as any).google?.maps) {
+      const gMap = googleMapRef.current;
+      const gMaps = (window as any).google.maps;
 
-    points.forEach((point) => {
-      const isSelected = point.id === selectedPointId;
-      const tierInfo = getPointTierInfo(point);
-      const displayVal = getMetricDisplay(point);
+      // Clear existing
+      googleCirclesRef.current.forEach((c) => c.setMap(null));
+      googleMarkersRef.current.forEach((m) => m.setMap(null));
+      googleCirclesRef.current = [];
+      googleMarkersRef.current = [];
 
-      const icon = L.divIcon({
-        className: 'aq-custom-marker-wrapper',
-        html: `
-          <div class="aq-marker-badge ${isSelected ? 'active-pin' : ''}" style="background-color: ${tierInfo.color};" data-point-id="${point.id}">
-            <span class="aq-marker-value">${displayVal}</span>
-          </div>
-        `,
-        iconSize: isSelected ? [42, 42] : [34, 34],
-        iconAnchor: isSelected ? [21, 21] : [17, 17],
+      points.forEach((point) => {
+        const isSelected = point.id === selectedPointId;
+        const tierInfo = getPointTierInfo(point);
+        const displayVal = getMetricDisplay(point);
+
+        // Ambient dispersion circle
+        const circle = new gMaps.Circle({
+          map: gMap,
+          center: { lat: point.latitude, lng: point.longitude },
+          radius: 1500,
+          fillColor: tierInfo.color,
+          fillOpacity: isSelected ? 0.6 : 0.35,
+          strokeColor: isSelected ? '#0f172a' : tierInfo.color,
+          strokeWeight: isSelected ? 2.5 : 1,
+        });
+
+        // Value pill marker
+        const marker = new gMaps.Marker({
+          map: gMap,
+          position: { lat: point.latitude, lng: point.longitude },
+          label: {
+            text: displayVal,
+            color: '#ffffff',
+            fontWeight: 'bold',
+            fontSize: '11px',
+          },
+          icon: {
+            path: gMaps.SymbolPath.CIRCLE,
+            scale: isSelected ? 18 : 14,
+            fillColor: tierInfo.color,
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+          },
+        });
+
+        circle.addListener('click', () => setSelectedPointId(point.id));
+        marker.addListener('click', () => setSelectedPointId(point.id));
+
+        googleCirclesRef.current.push(circle);
+        googleMarkersRef.current.push(marker);
       });
+      return;
+    }
 
-      const marker = L.marker([point.latitude, point.longitude], { icon });
-      marker.on('click', () => {
-        setSelectedPointId(point.id);
+    // 2. Update Leaflet markers if active
+    if (activeEngine === 'leaflet' && leafletMapRef.current && leafletMarkersGroupRef.current) {
+      const markersGroup = leafletMarkersGroupRef.current;
+      markersGroup.clearLayers();
+
+      points.forEach((point) => {
+        const isSelected = point.id === selectedPointId;
+        const tierInfo = getPointTierInfo(point);
+        const displayVal = getMetricDisplay(point);
+
+        const icon = L.divIcon({
+          className: 'aq-custom-marker-wrapper',
+          html: `
+            <div class="aq-marker-badge ${isSelected ? 'active-pin' : ''}" style="background-color: ${tierInfo.color};" data-point-id="${point.id}">
+              <span class="aq-marker-value">${displayVal}</span>
+            </div>
+          `,
+          iconSize: isSelected ? [42, 42] : [34, 34],
+          iconAnchor: isSelected ? [21, 21] : [17, 17],
+        });
+
+        const marker = L.marker([point.latitude, point.longitude], { icon });
+        marker.on('click', () => {
+          setSelectedPointId(point.id);
+        });
+
+        marker.addTo(markersGroup);
       });
-
-      marker.addTo(markersGroup);
-    });
-  }, [points, selectedPointId, metric]);
+    }
+  }, [points, selectedPointId, metric, activeEngine]);
 
   const selectedPoint = points.find((p) => p.id === selectedPointId) || points[0];
 
@@ -343,7 +472,11 @@ export function AirQualityMap({ location }: AirQualityMapProps) {
 
       {/* Map Tile & Attribution Footer */}
       <div className="aq-map-footer">
-        <span>Map tiles &copy; CARTO &copy; OpenStreetMap contributors</span>
+        {activeEngine === 'google' ? (
+          <span>Map data &copy; Google Maps API</span>
+        ) : (
+          <span>Map tiles &copy; CARTO &copy; OpenStreetMap contributors</span>
+        )}
         <span>Atmospheric modelling &copy; Open-Meteo</span>
       </div>
     </div>

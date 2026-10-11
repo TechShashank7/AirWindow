@@ -23,4 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 *.zip
+.env
 .env.local
+.env.*.local
+.env.development
+.env.production
+!.env.example
