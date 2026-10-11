@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SearchBar } from './components/SearchBar';
 import { ForecastChart } from './components/ForecastChart';
 import { ActivityPlanner } from './components/ActivityPlanner';
 import { RecommendationPanel } from './components/RecommendationPanel';
+import { AirAlertsModal } from './components/AirAlertsModal';
+import type { AlertModalMode } from './components/AirAlertsModal';
 import { getAirQualityForecast } from './api/openmeteo';
 import { isBackendEnabled, callEvaluateApi } from './api/evaluateApi';
 import type { LocationResult } from './api/openmeteo';
 import { processForecastData, getBestTimeWindow } from './utils/recommendation';
 import type { DataPoint, RecommendationResult } from './utils/recommendation';
-import { Wind, AlertCircle, Info } from 'lucide-react';
+import { Wind, AlertCircle, Info, Bell } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { format, parseISO } from 'date-fns';
 
@@ -18,6 +20,35 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
+
+  // Air Alerts modal state
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [alertModalMode, setAlertModalMode] = useState<AlertModalMode>('CREATE');
+  const [alertModalToken, setAlertModalToken] = useState<string>('');
+
+  // Handle email verification / management links via URL fragment (#token=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash || '';
+    const match = hash.match(/token=([a-f0-9]+)/i);
+
+    if (match && match[1]) {
+      const token = match[1];
+      const path = (window.location.pathname || '').toLowerCase();
+      const isManage = path.includes('/alerts/manage') || path.includes('manage');
+
+      setAlertModalMode(isManage ? 'MANAGE' : 'VERIFY');
+      setAlertModalToken(token);
+      setIsAlertModalOpen(true);
+
+      // Clean token from the address bar to avoid accidental sharing
+      try {
+        window.history.replaceState(null, '', window.location.pathname || '/');
+      } catch {
+        // Safe fallback
+      }
+    }
+  }, []);
 
   const handleLocationSelect = async (loc: LocationResult) => {
     setLocation(loc);
@@ -93,7 +124,22 @@ function App() {
             </div>
             <span className="brand-name">AirWindow</span>
           </a>
-          <SearchBar onSelect={handleLocationSelect} />
+          <div className="header-actions">
+            <SearchBar onSelect={handleLocationSelect} />
+            <button
+              type="button"
+              className="btn-alert-nav"
+              onClick={() => {
+                setAlertModalMode('CREATE');
+                setAlertModalToken('');
+                setIsAlertModalOpen(true);
+              }}
+              title="Configure personalized air quality alerts"
+            >
+              <Bell size={17} />
+              <span>Air Alerts</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -136,6 +182,32 @@ function App() {
         {/* Forecast content */}
         {location && !loading && dataPoints.length > 0 && (
           <div className="fade-up">
+
+            {/* Contextual Alert Callout */}
+            <div className="alert-callout-banner">
+              <div className="alert-callout-content">
+                <div className="alert-callout-icon">
+                  <Bell size={18} />
+                </div>
+                <div>
+                  <div className="alert-callout-title">Track alerts for {location.name}</div>
+                  <div className="alert-callout-sub">
+                    Get notified by email if air pollution is forecast to exceed your threshold.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-callout-action"
+                onClick={() => {
+                  setAlertModalMode('CREATE');
+                  setAlertModalToken('');
+                  setIsAlertModalOpen(true);
+                }}
+              >
+                Set Alert
+              </button>
+            </div>
 
             {/* Section heading */}
             <div className="section-heading">
@@ -235,6 +307,15 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Air Alerts Modal */}
+      <AirAlertsModal
+        isOpen={isAlertModalOpen}
+        onClose={() => setIsAlertModalOpen(false)}
+        initialMode={alertModalMode}
+        initialToken={alertModalToken}
+        currentLocation={location}
+      />
     </div>
   );
 }
