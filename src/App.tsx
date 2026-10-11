@@ -5,6 +5,8 @@ import { ActivityPlanner } from './components/ActivityPlanner';
 import { RecommendationPanel } from './components/RecommendationPanel';
 import { AirAlertsModal } from './components/AirAlertsModal';
 import type { AlertModalMode } from './components/AirAlertsModal';
+import { AirQualityMap } from './components/AirQualityMap';
+import { EarlyWarningPanel } from './components/EarlyWarningPanel';
 import { getAirQualityForecast } from './api/openmeteo';
 import { isBackendEnabled, callEvaluateApi } from './api/evaluateApi';
 import type { LocationResult } from './api/openmeteo';
@@ -252,6 +254,21 @@ function App() {
               </div>
             )}
 
+            {/* Early Warning Panel (Next 12 Hours Forecast Spike & Trends) */}
+            <EarlyWarningPanel
+              dataPoints={dataPoints}
+              locationName={location.name}
+              timezone={location.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+              onOpenAlertModal={() => {
+                setAlertModalMode('CREATE');
+                setAlertModalToken('');
+                setIsAlertModalOpen(true);
+              }}
+            />
+
+            {/* Local Air-Quality Forecast Map */}
+            <AirQualityMap location={location} />
+
             {/* Chart */}
             <ForecastChart data={dataPoints} />
 
@@ -261,7 +278,14 @@ function App() {
             {/* Recommendation */}
             {recommendation && (
               <div className="fade-up">
-                <RecommendationPanel result={recommendation} />
+                <RecommendationPanel
+                  result={recommendation}
+                  onOpenAlertModal={() => {
+                    setAlertModalMode('CREATE');
+                    setAlertModalToken('');
+                    setIsAlertModalOpen(true);
+                  }}
+                />
               </div>
             )}
 
