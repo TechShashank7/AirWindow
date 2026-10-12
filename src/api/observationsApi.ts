@@ -50,13 +50,15 @@ export interface ObservationsResponse {
   warning?: string;
 }
 
+const DEFAULT_API_URL = 'https://ifx0gvr7u0.execute-api.ap-southeast-2.amazonaws.com';
+
 function getBaseUrl(): string {
   const url = import.meta.env.VITE_EVALUATE_API_URL as string | undefined;
-  return (url || '').replace(/\/+$/, '');
+  return (url || DEFAULT_API_URL).replace(/\/+$/, '');
 }
 
 export function isBackendEnabled(): boolean {
-  return Boolean(import.meta.env.VITE_EVALUATE_API_URL);
+  return true;
 }
 
 /**
@@ -81,7 +83,7 @@ export async function fetchGroundObservations(
     };
   }
 
-  // Strategy 1: Dedicated GET /observations endpoint
+  // Strategy 1: Dedicated GET /observations endpoint (if provisioned in API Gateway)
   try {
     const getUrl = `${baseUrl}/observations?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&radius=${encodeURIComponent(radiusKm)}`;
     const res = await fetch(getUrl, {
@@ -93,37 +95,38 @@ export async function fetchGroundObservations(
       const data: ObservationsResponse = await res.json();
       return data;
     }
+  } catch {
+    // Silently continue to Strategy 2: unmapped routes on API Gateway return 404 without CORS, throwing a browser network error
+  }
 
-    // If 404, the dedicated route might not be mapped yet in API Gateway; try evaluate route
-    if (res.status === 404) {
-      // Strategy 2: Call evaluate endpoint with includeObservations: true
-      const now = new Date();
-      const today = now.toISOString().slice(0, 10);
-      const currentTime = `${today}T${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
-      const preferredStart = `${today}T06:00`;
-      const preferredEnd = `${today}T22:00`;
+  // Strategy 2: Resilient fallback via POST /evaluate
+  try {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const currentTime = `${today}T${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
+    const preferredStart = `${today}T06:00`;
+    const preferredEnd = `${today}T22:00`;
 
-      const evalRes = await fetch(`${baseUrl}/evaluate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          latitude: lat,
-          longitude: lon,
-          timezone: 'UTC',
-          durationMinutes: 60,
-          preferredStart,
-          preferredEnd,
-          currentTime,
-          includeObservations: true,
-          observationRadiusKm: radiusKm,
-        }),
-      });
+    const evalRes = await fetch(`${baseUrl}/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        latitude: lat,
+        longitude: lon,
+        timezone: 'UTC',
+        durationMinutes: 60,
+        preferredStart,
+        preferredEnd,
+        currentTime,
+        includeObservations: true,
+        observationRadiusKm: radiusKm,
+      }),
+    });
 
-      if (evalRes.ok) {
-        const evalData = await evalRes.json();
-        if (evalData.observations) {
-          return evalData.observations as ObservationsResponse;
-        }
+    if (evalRes.ok) {
+      const evalData = await evalRes.json();
+      if (evalData.observations) {
+        return evalData.observations as ObservationsResponse;
       }
     }
   } catch (err) {

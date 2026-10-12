@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
@@ -39,7 +40,29 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export function ForecastChart({ data }: ForecastChartProps) {
-  const chartData = data.map(d => ({
+  const [timeframe, setTimeframe] = useState<'24h' | '48h'>('48h');
+  const [showPm25, setShowPm25] = useState(true);
+  const [showPm10, setShowPm10] = useState(true);
+  const [showScore, setShowScore] = useState(true);
+  const [showWind, setShowWind] = useState(false);
+
+  const displayPoints = useMemo(() => {
+    if (timeframe === '24h') {
+      return data.slice(0, 24);
+    }
+    return data;
+  }, [data, timeframe]);
+
+  const stats = useMemo(() => {
+    const validPm25 = displayPoints.map(p => p.pm25).filter((v): v is number => v !== null);
+    if (!validPm25.length) return null;
+    const peak = Math.max(...validPm25);
+    const min = Math.min(...validPm25);
+    const avg = validPm25.reduce((a, b) => a + b, 0) / validPm25.length;
+    return { peak, min, avg };
+  }, [displayPoints]);
+
+  const chartData = displayPoints.map(d => ({
     ...d,
     pm25: d.pm25 !== null ? Number(d.pm25.toFixed(1)) : null,
     pm10: d.pm10 !== null ? Number(d.pm10.toFixed(1)) : null,
@@ -49,16 +72,99 @@ export function ForecastChart({ data }: ForecastChartProps) {
   }));
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div className="card-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-          </svg>
+    <div className="card chart-card">
+      <div className="chart-header-row">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="card-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <div>
+            <div className="card-title" style={{ marginBottom: 0 }}>
+              {timeframe === '24h' ? '24-Hour' : '48-Hour'} Air Quality Forecast
+            </div>
+            <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 2 }}>
+              Hourly modeled concentrations and dispersion trends
+            </div>
+          </div>
         </div>
-        <div>
-          <div className="card-title" style={{ marginBottom: 0 }}>48-Hour Air Quality Forecast</div>
-          <div style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: 2 }}>Hourly modelled concentrations (µg/m³)</div>
+
+        {/* Timeframe selector pill */}
+        <div className="chart-timeframe-toggle">
+          <button
+            type="button"
+            className={`btn-timeframe ${timeframe === '24h' ? 'active' : ''}`}
+            onClick={() => setTimeframe('24h')}
+          >
+            Next 24h
+          </button>
+          <button
+            type="button"
+            className={`btn-timeframe ${timeframe === '48h' ? 'active' : ''}`}
+            onClick={() => setTimeframe('48h')}
+          >
+            Full 48h
+          </button>
+        </div>
+      </div>
+
+      {/* Summary Stat Badges & Layer Toggles */}
+      <div className="chart-controls-strip">
+        {stats && (
+          <div className="chart-summary-chips">
+            <span className="summary-chip">
+              <small>Peak PM2.5</small>
+              <strong>{stats.peak.toFixed(1)} µg/m³</strong>
+            </span>
+            <span className="summary-chip">
+              <small>Lowest PM2.5</small>
+              <strong style={{ color: '#10b981' }}>{stats.min.toFixed(1)} µg/m³</strong>
+            </span>
+            <span className="summary-chip">
+              <small>Period Avg</small>
+              <strong>{stats.avg.toFixed(1)} µg/m³</strong>
+            </span>
+          </div>
+        )}
+
+        <div className="chart-metric-toggles">
+          <button
+            type="button"
+            className={`btn-toggle-chip pm25 ${showPm25 ? 'on' : ''}`}
+            onClick={() => setShowPm25(!showPm25)}
+            title="Toggle PM2.5 line"
+          >
+            <span className="toggle-dot" style={{ background: '#ef4444' }} />
+            PM2.5
+          </button>
+          <button
+            type="button"
+            className={`btn-toggle-chip pm10 ${showPm10 ? 'on' : ''}`}
+            onClick={() => setShowPm10(!showPm10)}
+            title="Toggle PM10 line"
+          >
+            <span className="toggle-dot" style={{ background: '#f59e0b' }} />
+            PM10
+          </button>
+          <button
+            type="button"
+            className={`btn-toggle-chip score ${showScore ? 'on' : ''}`}
+            onClick={() => setShowScore(!showScore)}
+            title="Toggle Relative Score line"
+          >
+            <span className="toggle-dot" style={{ background: '#2563eb' }} />
+            Score
+          </button>
+          <button
+            type="button"
+            className={`btn-toggle-chip wind ${showWind ? 'on' : ''}`}
+            onClick={() => setShowWind(!showWind)}
+            title="Toggle Wind speed line"
+          >
+            <span className="toggle-dot" style={{ background: '#8b5cf6' }} />
+            Wind
+          </button>
         </div>
       </div>
 
@@ -109,56 +215,64 @@ export function ForecastChart({ data }: ForecastChartProps) {
               iconType="circle"
               wrapperStyle={{ fontSize: 12, color: '#64748b', paddingTop: 12 }}
             />
-            <Area
-              yAxisId="left"
-              type="monotone"
-              dataKey="pm25"
-              name="PM2.5 (µg/m³)"
-              stroke="#ef4444"
-              strokeWidth={2.5}
-              fill="url(#gPm25)"
-              dot={false}
-              activeDot={{ r: 5, strokeWidth: 0 }}
-              connectNulls={false}
-            />
-            <Area
-              yAxisId="left"
-              type="monotone"
-              dataKey="pm10"
-              name="PM10 (µg/m³)"
-              stroke="#f59e0b"
-              strokeWidth={2.5}
-              fill="url(#gPm10)"
-              dot={false}
-              activeDot={{ r: 5, strokeWidth: 0 }}
-              connectNulls={false}
-            />
-            <Area
-              yAxisId="right"
-              type="monotone"
-              dataKey="score"
-              name="Relative Score"
-              stroke="#2563eb"
-              strokeWidth={2}
-              strokeDasharray="5 4"
-              fill="none"
-              dot={false}
-              activeDot={{ r: 4 }}
-              connectNulls={false}
-            />
-            <Area
-              yAxisId="wind"
-              type="monotone"
-              dataKey="windSpeed"
-              name="Wind Speed (km/h)"
-              stroke="#8b5cf6"
-              strokeWidth={2}
-              strokeDasharray="2 4"
-              fill="none"
-              dot={false}
-              activeDot={{ r: 4 }}
-              connectNulls={false}
-            />
+            {showPm25 && (
+              <Area
+                yAxisId="left"
+                type="monotone"
+                dataKey="pm25"
+                name="PM2.5 (µg/m³)"
+                stroke="#ef4444"
+                strokeWidth={2.5}
+                fill="url(#gPm25)"
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 0 }}
+                connectNulls={false}
+              />
+            )}
+            {showPm10 && (
+              <Area
+                yAxisId="left"
+                type="monotone"
+                dataKey="pm10"
+                name="PM10 (µg/m³)"
+                stroke="#f59e0b"
+                strokeWidth={2.5}
+                fill="url(#gPm10)"
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 0 }}
+                connectNulls={false}
+              />
+            )}
+            {showScore && (
+              <Area
+                yAxisId="right"
+                type="monotone"
+                dataKey="score"
+                name="Relative Score"
+                stroke="#2563eb"
+                strokeWidth={2}
+                strokeDasharray="5 4"
+                fill="none"
+                dot={false}
+                activeDot={{ r: 4 }}
+                connectNulls={false}
+              />
+            )}
+            {showWind && (
+              <Area
+                yAxisId="wind"
+                type="monotone"
+                dataKey="windSpeed"
+                name="Wind Speed (km/h)"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                strokeDasharray="2 4"
+                fill="none"
+                dot={false}
+                activeDot={{ r: 4 }}
+                connectNulls={false}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>

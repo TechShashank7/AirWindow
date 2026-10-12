@@ -9,6 +9,7 @@ interface ActivityPlannerProps {
 
 export function ActivityPlanner({ onPlan, timezone }: ActivityPlannerProps) {
   const [duration, setDuration] = useState<number>(60);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
 
   // Generate 48 hours from the current moment, formatted in the location's timezone
   const nowMs = Date.now();
@@ -25,24 +26,60 @@ export function ActivityPlanner({ onPlan, timezone }: ActivityPlannerProps) {
   const [startTime, setStartTime] = useState(timeOptions[0].value);
   const [endTime, setEndTime] = useState(timeOptions[Math.min(12, timeOptions.length - 1)].value);
 
+  const presets = [
+    { id: 'jog', label: '🏃 Jogging', duration: 45, hoursAhead: 6 },
+    { id: 'walk', label: '🚶 Walk / Commute', duration: 30, hoursAhead: 4 },
+    { id: 'cycle', label: '🚴 Cycling', duration: 60, hoursAhead: 8 },
+    { id: 'play', label: '⚽ Outdoor Play', duration: 90, hoursAhead: 12 },
+  ];
+
+  const handleApplyPreset = (p: typeof presets[0]) => {
+    setActivePreset(p.id);
+    setDuration(p.duration);
+    if (timeOptions.length > 0) {
+      setStartTime(timeOptions[0].value);
+      const endIdx = Math.min(p.hoursAhead, timeOptions.length - 1);
+      setEndTime(timeOptions[endIdx].value);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onPlan(duration, startTime, endTime);
   };
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <div className="card-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>
-          <Clock size={18} />
-        </div>
-        <div>
-          <div className="card-title" style={{ marginBottom: 0 }}>Plan Your Outdoor Activity</div>
+    <div className="card planner-card">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="card-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>
+            <Clock size={18} />
+          </div>
+          <div>
+            <div className="card-title" style={{ marginBottom: 0 }}>Plan Your Outdoor Activity</div>
+            <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 2 }}>
+              Find the cleanest window to minimize pollution exposure
+            </div>
+          </div>
         </div>
       </div>
-      <p className="card-subtitle">
-        Tell us when you'd like to go outside — we'll find the cleanest available window.
-      </p>
+
+      {/* Activity Presets */}
+      <div className="planner-presets-wrap">
+        <span className="preset-label">Quick Presets:</span>
+        <div className="planner-presets-chips">
+          {presets.map(p => (
+            <button
+              key={p.id}
+              type="button"
+              className={`preset-pill ${activePreset === p.id ? 'active' : ''}`}
+              onClick={() => handleApplyPreset(p)}
+            >
+              {p.label} <small>({p.duration}m)</small>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <div className="planner-grid">
@@ -53,11 +90,16 @@ export function ActivityPlanner({ onPlan, timezone }: ActivityPlannerProps) {
             <select
               id="duration"
               value={duration}
-              onChange={e => setDuration(Number(e.target.value))}
+              onChange={e => {
+                setDuration(Number(e.target.value));
+                setActivePreset(null);
+              }}
             >
               <option value={30}>30 minutes</option>
+              <option value={45}>45 minutes</option>
               <option value={60}>60 minutes</option>
               <option value={90}>90 minutes</option>
+              <option value={120}>2 hours</option>
             </select>
           </div>
 
@@ -68,7 +110,10 @@ export function ActivityPlanner({ onPlan, timezone }: ActivityPlannerProps) {
             <select
               id="start"
               value={startTime}
-              onChange={e => setStartTime(e.target.value)}
+              onChange={e => {
+                setStartTime(e.target.value);
+                setActivePreset(null);
+              }}
             >
               {timeOptions.map(o => <option key={`s-${o.value}`} value={o.value}>{o.label}</option>)}
             </select>
@@ -81,7 +126,10 @@ export function ActivityPlanner({ onPlan, timezone }: ActivityPlannerProps) {
             <select
               id="end"
               value={endTime}
-              onChange={e => setEndTime(e.target.value)}
+              onChange={e => {
+                setEndTime(e.target.value);
+                setActivePreset(null);
+              }}
             >
               {timeOptions.map(o => <option key={`e-${o.value}`} value={o.value}>{o.label}</option>)}
             </select>
@@ -90,7 +138,7 @@ export function ActivityPlanner({ onPlan, timezone }: ActivityPlannerProps) {
 
         <div className="btn-row">
           <button type="submit" className="btn-primary">
-            Find Best Time <ArrowRight size={16} />
+            Find Cleanest Window <ArrowRight size={16} />
           </button>
         </div>
       </form>

@@ -61,9 +61,11 @@ export interface GoogleCurrentConditionsResponse {
   };
 }
 
+const DEFAULT_API_URL = 'https://ifx0gvr7u0.execute-api.ap-southeast-2.amazonaws.com';
+
 function getBaseUrl(): string {
   const url = import.meta.env.VITE_EVALUATE_API_URL as string | undefined;
-  return (url || '').replace(/\/+$/, '');
+  return (url || DEFAULT_API_URL).replace(/\/+$/, '');
 }
 
 /**
@@ -78,7 +80,7 @@ export async function fetchCurrentAirQuality(
     return null;
   }
 
-  // Strategy 1: Dedicated GET /current-aqi route
+  // Strategy 1: Dedicated GET /current-aqi route (if provisioned in API Gateway)
   try {
     const directUrl = `${baseUrl}/current-aqi?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
     const res = await fetch(directUrl, {
@@ -90,35 +92,37 @@ export async function fetchCurrentAirQuality(
       const data: GoogleCurrentConditionsResponse = await res.json();
       return data;
     }
+  } catch {
+    // Silently continue to Strategy 2: unmapped routes on API Gateway return 404 without CORS, throwing a browser network error
+  }
 
-    // If 404, route might not be mapped in API Gateway; try fallback via /evaluate
-    if (res.status === 404) {
-      const now = new Date();
-      const today = now.toISOString().slice(0, 10);
-      const currentTime = `${today}T${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
-      const preferredStart = `${today}T06:00`;
-      const preferredEnd = `${today}T22:00`;
+  // Strategy 2: Resilient fallback via POST /evaluate
+  try {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const currentTime = `${today}T${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
+    const preferredStart = `${today}T06:00`;
+    const preferredEnd = `${today}T22:00`;
 
-      const evalRes = await fetch(`${baseUrl}/evaluate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          latitude: lat,
-          longitude: lon,
-          timezone: 'UTC',
-          durationMinutes: 60,
-          preferredStart,
-          preferredEnd,
-          currentTime,
-          includeCurrentAqi: true,
-        }),
-      });
+    const evalRes = await fetch(`${baseUrl}/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        latitude: lat,
+        longitude: lon,
+        timezone: 'UTC',
+        durationMinutes: 60,
+        preferredStart,
+        preferredEnd,
+        currentTime,
+        includeCurrentAqi: true,
+      }),
+    });
 
-      if (evalRes.ok) {
-        const evalData = await evalRes.json();
-        if (evalData.currentAqi) {
-          return evalData.currentAqi as GoogleCurrentConditionsResponse;
-        }
+    if (evalRes.ok) {
+      const evalData = await evalRes.json();
+      if (evalData.currentAqi) {
+        return evalData.currentAqi as GoogleCurrentConditionsResponse;
       }
     }
   } catch (err) {
