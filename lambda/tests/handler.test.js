@@ -170,4 +170,16 @@ describe('API Gateway Handler Phase 1', () => {
     expect(res.statusCode).toBe(502);
     expect(JSON.parse(res.body).error.code).toBe('UPSTREAM_FAILED');
   });
+
+  it('routes to /current-aqi endpoint successfully', async () => {
+    const res = await handler({
+      requestContext: { http: { method: 'GET' } },
+      httpMethod: 'GET',
+      rawPath: '/current-aqi',
+      queryStringParameters: { latitude: '28.61', longitude: '77.20' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.location.latitude).toBe(28.61);
+  });
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SearchBar } from './SearchBar';
 import * as geolocationUtils from '../utils/geolocation';
+import * as locationSearchUtils from '../utils/locationSearch';
 
 describe('SearchBar component', () => {
   beforeEach(() => {
@@ -112,6 +113,19 @@ describe('SearchBar component', () => {
   });
 
   it('searches for locations and selects a search result from dropdown', async () => {
+    vi.spyOn(locationSearchUtils, 'searchLocationsWithFallback').mockResolvedValue([
+      {
+        id: 1,
+        name: 'Paris',
+        latitude: 48.8566,
+        longitude: 2.3522,
+        elevation: 35,
+        country: 'France',
+        timezone: 'Europe/Paris',
+        source: 'openmeteo',
+      },
+    ]);
+
     const mockOnSelect = vi.fn();
     render(<SearchBar onSelect={mockOnSelect} />);
 

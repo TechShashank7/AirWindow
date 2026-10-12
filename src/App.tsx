@@ -7,6 +7,7 @@ import { AirAlertsModal } from './components/AirAlertsModal';
 import type { AlertModalMode } from './components/AirAlertsModal';
 import { AirQualityMap } from './components/AirQualityMap';
 import { EarlyWarningPanel } from './components/EarlyWarningPanel';
+import { CurrentConditionsCard } from './components/CurrentConditionsCard';
 import { getAirQualityForecast } from './api/openmeteo';
 import { isBackendEnabled, callEvaluateApi } from './api/evaluateApi';
 import type { LocationResult } from './api/openmeteo';
@@ -284,6 +285,9 @@ function App() {
               </span>
             </div>
 
+            {/* Hyperlocal Current Air Quality & National AQI (Google Maps Platform) */}
+            <CurrentConditionsCard location={location} />
+
             {/* Stat cards for the earliest available reading */}
             {latestPoint && (
               <div className="stat-grid">
@@ -364,9 +368,15 @@ function App() {
               <ul>
                 <li>
                   <span>
-                    <strong>Data Source:</strong> Air quality forecasts are provided by the{' '}
+                    <strong>Multi-Source Architecture:</strong> 48-hour continuous forecasts are powered by{' '}
                     <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">
-                      Open-Meteo Air Quality API
+                      Open-Meteo
+                    </a>; current conditions and India National AQI are enriched via{' '}
+                    <a href="https://developers.google.com/maps/documentation/air-quality" target="_blank" rel="noreferrer">
+                      Google Maps Platform Air Quality API
+                    </a>; and physical ground-monitoring sensor stations are mapped via{' '}
+                    <a href="https://openaq.org/" target="_blank" rel="noreferrer">
+                      OpenAQ
                     </a>.
                   </span>
                 </li>

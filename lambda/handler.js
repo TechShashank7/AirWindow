@@ -3,6 +3,8 @@
 const { DynamoDBClient, GetItemCommand, PutItemCommand } = require('@aws-sdk/client-dynamodb');
 const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
 const { processForecastData, getBestTimeWindow } = require('./recommendation');
+const { getNearbyObservations } = require('./observations/observationsApi');
+const { getCurrentAirQuality } = require('./googleAirQuality/googleAirQualityApi');
 
 const dbClient = new DynamoDBClient({});
 const CACHE_TABLE = process.env.CACHE_TABLE_NAME || 'AirWindow-ForecastCache';
@@ -201,6 +203,49 @@ async function handleEvaluate(body) {
     disclaimer: 'This service uses modelled forecasts, not real-time measurements. Not CPCB AQI.'
   };
 
+  // Optional enrichments: run concurrently to minimize Lambda execution time
+  const enrichmentPromises = [];
+
+  if (body.includeObservations === true) {
+    enrichmentPromises.push(
+      getNearbyObservations({
+        latitude,
+        longitude,
+        radiusKm: body.observationRadiusKm || 25,
+        limit: 5,
+      })
+        .then((obsRes) => {
+          if (obsRes && obsRes.statusCode === 200) {
+            normalizedResponse.observations = obsRes.body;
+          }
+        })
+        .catch((obsErr) => {
+          log('WARN', 'Failed to retrieve observations for evaluate response', { error: obsErr?.message });
+        })
+    );
+  }
+
+  if (body.includeCurrentAqi === true) {
+    enrichmentPromises.push(
+      getCurrentAirQuality({
+        latitude,
+        longitude,
+      })
+        .then((aqiRes) => {
+          if (aqiRes && aqiRes.statusCode === 200) {
+            normalizedResponse.currentAqi = aqiRes.body;
+          }
+        })
+        .catch((aqiErr) => {
+          log('WARN', 'Failed to retrieve current air quality for evaluate response', { error: aqiErr?.message });
+        })
+    );
+  }
+
+  if (enrichmentPromises.length > 0) {
+    await Promise.allSettled(enrichmentPromises);
+  }
+
   // BACKWARD COMPATIBILITY: Attach existing top-level fields for the current frontend
   normalizedResponse.forecastTimezone = rawForecast.timezone;
   normalizedResponse.retrievedAt = normalizedResponse.metadata.retrievedAt;
@@ -231,9 +276,31 @@ exports.handler = async (event) => {
     }
   }
 
-  // Routing
+  // Routing: Evaluate
   if (path === '/evaluate' && method === 'POST') {
     return await handleEvaluate(body);
+  }
+
+  // Routing: Dedicated Ground-station Observations
+  if ((path === '/observations' || path === '/observations/near') && (method === 'GET' || method === 'POST')) {
+    const params = method === 'GET' ? (event.queryStringParameters || {}) : body;
+    const obsRes = await getNearbyObservations({
+      latitude: params.latitude || params.lat,
+      longitude: params.longitude || params.lon,
+      radiusKm: params.radiusKm || params.radius || 25,
+      limit: params.limit || 5,
+    });
+    return respond(obsRes.statusCode, obsRes.body);
+  }
+
+  // Routing: Dedicated Google Current Air Quality & Indian AQI
+  if ((path === '/current-aqi' || path === '/airquality/current') && (method === 'GET' || method === 'POST')) {
+    const params = method === 'GET' ? (event.queryStringParameters || {}) : body;
+    const aqiRes = await getCurrentAirQuality({
+      latitude: params.latitude || params.lat,
+      longitude: params.longitude || params.lon,
+    });
+    return respond(aqiRes.statusCode, aqiRes.body);
   }
 
   return respond(404, { error: { code: 'NOT_FOUND', message: 'Route not found', details: [] } });

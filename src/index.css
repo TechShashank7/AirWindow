@@ -1726,3 +1726,473 @@ a:hover { text-decoration: underline; }
   border-color: #94a3b8;
   color: #0f172a;
 }
+
+/* ── Ground Station Observations Styles ───────────────────────── */
+.aq-layer-toggle-wrap {
+  display: flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 10px;
+  gap: 4px;
+}
+.btn-layer-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-layer-tab.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.layer-count-badge {
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 800;
+}
+.btn-layer-tab.active .layer-count-badge {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.aq-station-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+.aq-meta-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.aq-stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.freshness-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.freshness-badge.recent {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+.freshness-badge.moderate {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+.freshness-badge.stale {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+.freshness-badge.outdated,
+.freshness-badge.unknown {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.aq-stat-time {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* ── Comparison with Model ─────────────────────────────────── */
+.aq-model-comparison {
+  margin-top: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.comparison-header {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.comparison-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #475569;
+  padding: 4px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+.comparison-row:last-of-type {
+  border-bottom: none;
+}
+.comparison-row.diff {
+  font-weight: 700;
+  color: #0f172a;
+  padding-top: 6px;
+  margin-top: 2px;
+}
+.text-elevated { color: #ea580c; }
+.text-good { color: #0284c7; }
+
+.comparison-disclaimer {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.45;
+  font-style: italic;
+}
+
+.observation-callout {
+  border-left-color: #059669;
+  background: #f0fdf4;
+}
+.observation-callout .aq-integrity-badge {
+  color: #059669;
+}
+
+.aq-no-stations {
+  padding: 36px 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  color: #475569;
+  border: 1px dashed #cbd5e1;
+}
+.aq-no-stations strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+.aq-no-stations p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* Custom Leaflet Station Icon */
+.aq-station-pin {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.aq-station-pin.selected {
+  transform: scale(1.18);
+  border-color: #0f172a;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.station-pin-symbol {
+  font-size: 11px;
+  line-height: 1;
+}
+.station-pin-val {
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.aq-all-outdated-alert {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.aq-all-outdated-alert strong {
+  display: block;
+  font-size: 0.88rem;
+  color: #92400e;
+  margin-bottom: 3px;
+}
+.aq-all-outdated-alert p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #b45309;
+  line-height: 1.45;
+}
+.aq-station-outdated-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 10px;
+}
+.aq-station-pin.outdated {
+  border-style: dashed;
+  opacity: 0.9;
+}
+.text-muted {
+  color: #64748b;
+  font-style: italic;
+}
+
+/* ── Current Conditions & National AQI Card ──────────────────── */
+.current-aqi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.current-aqi-card.unconfigured {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+}
+.current-aqi-card.loading {
+  background: #f8fafc;
+  padding: 16px 20px;
+}
+.current-aqi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.current-aqi-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.current-aqi-title-wrap h4 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.current-aqi-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.source-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.cache-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.current-aqi-unavailable-note {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.india-aqi-banner {
+  border: 1.5px solid;
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.india-aqi-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.india-aqi-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #475569;
+}
+.india-aqi-val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.india-aqi-score {
+  font-size: 2.2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.india-aqi-category {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+.india-aqi-dominant {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.75rem;
+  color: #475569;
+}
+.india-aqi-dominant strong {
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.universal-aqi-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin-bottom: 14px;
+}
+.universal-aqi-cat {
+  color: #64748b;
+  font-style: italic;
+}
+
+.current-pollutants-section {
+  margin-bottom: 14px;
+}
+.pollutants-section-title {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.current-pollutants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 8px;
+}
+.pollutant-chip {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pollutant-chip .p-code {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+}
+.pollutant-chip .p-val {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.pollutant-chip .p-val small {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.current-health-advisory {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.advisory-text strong {
+  display: block;
+  font-size: 0.8rem;
+  color: #166534;
+  margin-bottom: 2px;
+}
+.advisory-text p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #15803d;
+  line-height: 1.45;
+}
+
+.current-aqi-footer {
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.current-aqi-footer .time-info,
+.current-aqi-footer .provenance-disclosure {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+.text-amber { color: #d97706; }
+.text-emerald { color: #059669; }
+.text-blue { color: #2563eb; }
+.text-muted-icon { color: #94a3b8; }
+.icon-spin { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+
