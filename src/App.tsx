@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { SearchBar } from './components/SearchBar';
 import { ForecastChart } from './components/ForecastChart';
 import { ActivityPlanner } from './components/ActivityPlanner';
@@ -149,12 +149,21 @@ function App() {
     }, 50);
   };
 
-  // Latest data point for the "current reading" stat cards
-  const latestPoint = dataPoints.find(d => d.pm25 !== null || d.pm10 !== null);
-
-  // Time format helper for header clock
+  // Time format helper for header clock & current-hour lookup
   const tz = location?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const currentLocalTimeDisplay = formatInTimeZone(new Date(), tz, "HH:mm · EEE, MMM d");
+  const currentHourLocal = formatInTimeZone(new Date(), tz, "yyyy-MM-dd'T'HH");
+
+  // Dynamic forecast point matching the current hour (or closest upcoming hour)
+  const currentPoint = useMemo(() => {
+    if (!dataPoints || dataPoints.length === 0) return null;
+    return (
+      dataPoints.find((d) => d.time.substring(0, 13) === currentHourLocal) ||
+      dataPoints.find((d) => d.time.substring(0, 13) > currentHourLocal) ||
+      dataPoints.find((d) => d.pm25 !== null || d.pm10 !== null) ||
+      null
+    );
+  }, [dataPoints, currentHourLocal]);
 
   return (
     <div className="app-shell">
@@ -474,12 +483,12 @@ function App() {
                     <CurrentConditionsCard location={location} />
 
                     {/* KPI Stat Grid */}
-                    {latestPoint && (
+                    {currentPoint && (
                       <div className="stat-grid">
                         <div className="stat-card">
                           <div className="stat-label">PM2.5 Forecast</div>
                           <div className="stat-value val-pm25">
-                            {latestPoint.pm25 !== null ? latestPoint.pm25.toFixed(1) : '—'}
+                            {currentPoint.pm25 !== null ? currentPoint.pm25.toFixed(1) : '—'}
                           </div>
                           <div className="stat-unit">µg/m³ · Fine Particulate</div>
                         </div>
@@ -487,7 +496,7 @@ function App() {
                         <div className="stat-card">
                           <div className="stat-label">PM10 Forecast</div>
                           <div className="stat-value val-pm10">
-                            {latestPoint.pm10 !== null ? latestPoint.pm10.toFixed(1) : '—'}
+                            {currentPoint.pm10 !== null ? currentPoint.pm10.toFixed(1) : '—'}
                           </div>
                           <div className="stat-unit">µg/m³ · Coarse Particulate</div>
                         </div>
@@ -495,17 +504,17 @@ function App() {
                         <div className="stat-card" title="Calculated as PM2.5 + (0.5 × PM10). Dimensionless comparison unit.">
                           <div className="stat-label">Relative Score</div>
                           <div className="stat-value val-score">
-                            {latestPoint.score !== null ? latestPoint.score.toFixed(1) : '—'}
+                            {currentPoint.score !== null ? currentPoint.score.toFixed(1) : '—'}
                           </div>
                           <div className="stat-unit">Weighted Exposure Index</div>
                         </div>
 
                         <div className="stat-card">
-                          <div className="stat-label">Earliest Forecast</div>
+                          <div className="stat-label">Forecast Hour</div>
                           <div className="stat-time-val">
-                            {format(parseISO(latestPoint.time), 'HH:mm')}
+                            {format(parseISO(currentPoint.time), 'HH:mm')}
                           </div>
-                          <div className="stat-unit">{format(parseISO(latestPoint.time), 'MMM dd')} (Local Time)</div>
+                          <div className="stat-unit">{format(parseISO(currentPoint.time), 'MMM dd')} (Local Time)</div>
                         </div>
                       </div>
                     )}
@@ -672,35 +681,35 @@ function App() {
                   <div className="dashboard-col-main">
                     <CurrentConditionsCard location={location} />
 
-                    {latestPoint && (
+                    {currentPoint && (
                       <div className="stat-grid">
                         <div className="stat-card">
                           <div className="stat-label">PM2.5 Forecast</div>
                           <div className="stat-value val-pm25">
-                            {latestPoint.pm25 !== null ? latestPoint.pm25.toFixed(1) : '—'}
+                            {currentPoint.pm25 !== null ? currentPoint.pm25.toFixed(1) : '—'}
                           </div>
                           <div className="stat-unit">µg/m³</div>
                         </div>
                         <div className="stat-card">
                           <div className="stat-label">PM10 Forecast</div>
                           <div className="stat-value val-pm10">
-                            {latestPoint.pm10 !== null ? latestPoint.pm10.toFixed(1) : '—'}
+                            {currentPoint.pm10 !== null ? currentPoint.pm10.toFixed(1) : '—'}
                           </div>
                           <div className="stat-unit">µg/m³</div>
                         </div>
                         <div className="stat-card">
                           <div className="stat-label">Relative Score</div>
                           <div className="stat-value val-score">
-                            {latestPoint.score !== null ? latestPoint.score.toFixed(1) : '—'}
+                            {currentPoint.score !== null ? currentPoint.score.toFixed(1) : '—'}
                           </div>
                           <div className="stat-unit">Index</div>
                         </div>
                         <div className="stat-card">
-                          <div className="stat-label">Earliest Forecast</div>
+                          <div className="stat-label">Forecast Hour</div>
                           <div className="stat-time-val">
-                            {format(parseISO(latestPoint.time), 'HH:mm')}
+                            {format(parseISO(currentPoint.time), 'HH:mm')}
                           </div>
-                          <div className="stat-unit">{format(parseISO(latestPoint.time), 'MMM dd')}</div>
+                          <div className="stat-unit">{format(parseISO(currentPoint.time), 'MMM dd')}</div>
                         </div>
                       </div>
                     )}
