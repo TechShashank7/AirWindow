@@ -108,7 +108,7 @@ export function SearchBar({
       <input
         type="text"
         className="search-input"
-        placeholder="Search for a city (e.g. London, Tokyo)…"
+        placeholder="Search for a city (e.g. Delhi, Mumbai, Bengaluru)…"
         value={query}
         onChange={e => setQuery(e.target.value)}
         onFocus={() => { if (results.length > 0) setShowDropdown(true); }}

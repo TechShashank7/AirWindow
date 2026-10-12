@@ -652,18 +652,6 @@ export function AirQualityMap({ location }: AirQualityMapProps) {
                   </span>
                 </div>
               </div>
-
-              {/* Data Integrity Callout */}
-              <div className="aq-integrity-callout">
-                <div className="aq-integrity-badge">
-                  <Info size={14} />
-                  <span>Modelled Forecast</span>
-                </div>
-                <p className="aq-integrity-text">
-                  Values are computed by Open-Meteo numerical atmospheric models for this grid coordinate.
-                  Ground station monitoring is currently not available for this point. Do not treat as certified physical measurements.
-                </p>
-              </div>
             </div>
           )}
 
@@ -899,16 +887,6 @@ export function AirQualityMap({ location }: AirQualityMapProps) {
           )}
         </div>
       )}
-
-      {/* Map Tile & Attribution Footer */}
-      <div className="aq-map-footer">
-        {activeEngine === 'google' ? (
-          <span>Map data &copy; Google Maps API</span>
-        ) : (
-          <span>Map tiles &copy; OpenStreetMap contributors</span>
-        )}
-        <span>Atmospheric modelling &copy; Open-Meteo &bull; Ground observations &copy; OpenAQ</span>
-      </div>
     </div>
   );
 }

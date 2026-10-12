@@ -167,11 +167,11 @@ describe('AirQualityMap', () => {
     // Verify legend
     expect(screen.getByText(/Forecast \(PM2.5\)/i)).toBeInTheDocument();
 
-    // Verify Data Integrity Disclosure
-    expect(screen.getAllByText(/Modelled Forecast/i).length).toBeGreaterThanOrEqual(1);
+    // Verify Data Integrity Disclosure and footer attributions are removed
     expect(
-      screen.getByText(/Values are computed by Open-Meteo numerical atmospheric models/i)
-    ).toBeInTheDocument();
+      screen.queryByText(/Values are computed by Open-Meteo numerical atmospheric models/i)
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Atmospheric modelling/i)).not.toBeInTheDocument();
   });
 
   it('allows switching to Ground-Station Observations layer with real station data', async () => {

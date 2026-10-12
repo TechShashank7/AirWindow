@@ -329,7 +329,7 @@ export function AirAlertsModal({
                         <input
                           type="text"
                           className="text-input"
-                          placeholder="Search for a city (e.g. Delhi, London)..."
+                          placeholder="Search for a city (e.g. Delhi, Mumbai, Bengaluru)..."
                           value={locQuery}
                           onChange={e => setLocQuery(e.target.value)}
                           autoFocus={showLocPicker}

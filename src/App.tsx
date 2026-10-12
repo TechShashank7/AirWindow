@@ -34,7 +34,7 @@ function App() {
   const [geoError, setGeoError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTab>('overview');
-  const [showMethodologyModal, setShowMethodologyModal] = useState(false);
+  const [isPlanning, setIsPlanning] = useState(false);
 
   // Air Alerts modal state
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
@@ -107,7 +107,7 @@ function App() {
 
     if (isBackendEnabled()) {
       try {
-        setLoading(true);
+        setIsPlanning(true);
         const res = await callEvaluateApi({
           latitude: location.latitude,
           longitude: location.longitude,
@@ -133,7 +133,7 @@ function App() {
         const result = getBestTimeWindow(dataPoints, duration, start, end, currentTimeStr);
         setRecommendation(result);
       } finally {
-        setLoading(false);
+        setIsPlanning(false);
       }
     } else {
       const result = getBestTimeWindow(dataPoints, duration, start, end, currentTimeStr);
@@ -193,16 +193,6 @@ function App() {
             />
 
             <div className="header-buttons">
-              <button
-                type="button"
-                className="btn-header-secondary"
-                onClick={() => setShowMethodologyModal(true)}
-                title="View Data Methodology & Scientific Sources"
-              >
-                <Info size={16} />
-                <span className="hide-on-mobile">Methodology</span>
-              </button>
-
               <button
                 type="button"
                 className="btn-alert-nav"
@@ -552,6 +542,7 @@ function App() {
                     <ActivityPlanner
                       onPlan={handlePlanActivity}
                       timezone={location.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                      isPlanning={isPlanning}
                     />
 
                     {/* Recommendation Result if computed */}
@@ -647,6 +638,7 @@ function App() {
                   <ActivityPlanner
                     onPlan={handlePlanActivity}
                     timezone={location.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                    isPlanning={isPlanning}
                   />
 
                   {recommendation ? (
@@ -734,6 +726,7 @@ function App() {
                     <ActivityPlanner
                       onPlan={handlePlanActivity}
                       timezone={location.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                      isPlanning={isPlanning}
                     />
 
                     {recommendation && (
@@ -771,13 +764,6 @@ function App() {
             <button
               type="button"
               className="footer-link-btn"
-              onClick={() => setShowMethodologyModal(true)}
-            >
-              Data Methodology & Sources
-            </button>
-            <button
-              type="button"
-              className="footer-link-btn"
               onClick={() => {
                 setAlertModalMode('CREATE');
                 setAlertModalToken('');
@@ -789,89 +775,6 @@ function App() {
           </div>
         </div>
       </footer>
-
-      {/* ─── Methodology & Data Transparency Modal ──────────────── */}
-      {showMethodologyModal && (
-        <div className="modal-backdrop" onClick={() => setShowMethodologyModal(false)}>
-          <div className="modal-content methodology-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-header-title">
-                <div className="modal-icon-badge">
-                  <Info size={22} />
-                </div>
-                <div>
-                  <h3>About the Data & Methodology</h3>
-                  <div className="modal-subtitle">Multi-source scientific architecture and model transparency</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setShowMethodologyModal(false)}
-                aria-label="Close modal"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="methodology-body">
-              <div className="methodology-section">
-                <h4>1. Multi-Source Architecture</h4>
-                <p>
-                  AirWindow pairs multiple complementary environmental data sources to offer continuous accuracy:
-                </p>
-                <ul>
-                  <li>
-                    <strong>Open-Meteo Air Quality API:</strong> High-resolution continuous 48-hour aerosol forecasts 
-                    derived from national weather models (Copernicus CAMS & GFS).
-                  </li>
-                  <li>
-                    <strong>Google Maps Platform Air Quality API:</strong> Hyperlocal 500m current atmospheric conditions 
-                    and validated national indices, including the India National AQI (CPCB).
-                  </li>
-                  <li>
-                    <strong>OpenAQ Physical Sensors:</strong> Real-time and historical measurements from certified 
-                    government and research ground stations.
-                  </li>
-                </ul>
-              </div>
-
-              <div className="methodology-section">
-                <h4>2. Relative Pollution Score Formula</h4>
-                <p>
-                  When ranking time windows for outdoor activities, AirWindow applies a transparent comparison formula:
-                </p>
-                <div className="formula-box">
-                  <code>Score = PM2.5 + (0.5 × PM10)</code>
-                </div>
-                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                  PM2.5 particles are weighted twice as heavily as PM10 due to their deeper penetration into pulmonary alveoli 
-                  and the cardiovascular system.
-                </p>
-              </div>
-
-              <div className="methodology-section">
-                <h4>3. Safety & Health Disclaimers</h4>
-                <p>
-                  Forecasts and window recommendations are comparative, intended to help users pick the least polluted time 
-                  within an upcoming period. They do not constitute certified medical advice. Always adhere to local emergency 
-                  environmental advisories.
-                </p>
-              </div>
-            </div>
-
-            <div className="modal-actions-right">
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => setShowMethodologyModal(false)}
-              >
-                Close & Return
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ─── Air Alerts Modal ────────────────────────────────────── */}
       <AirAlertsModal

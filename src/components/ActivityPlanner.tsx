@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Clock, Hourglass, CalendarRange, ArrowRight } from 'lucide-react';
+import { Clock, Hourglass, CalendarRange, ArrowRight, Loader2 } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
 
 interface ActivityPlannerProps {
   onPlan: (duration: number, start: string, end: string) => void;
   timezone: string;
+  isPlanning?: boolean;
 }
 
-export function ActivityPlanner({ onPlan, timezone }: ActivityPlannerProps) {
+export function ActivityPlanner({ onPlan, timezone, isPlanning = false }: ActivityPlannerProps) {
   const [duration, setDuration] = useState<number>(60);
   const [activePreset, setActivePreset] = useState<string | null>(null);
 
@@ -137,8 +138,16 @@ export function ActivityPlanner({ onPlan, timezone }: ActivityPlannerProps) {
         </div>
 
         <div className="btn-row">
-          <button type="submit" className="btn-primary">
-            Find Cleanest Window <ArrowRight size={16} />
+          <button type="submit" className="btn-primary" disabled={isPlanning}>
+            {isPlanning ? (
+              <>
+                Finding Cleanest Window… <Loader2 size={16} className="icon-spin" />
+              </>
+            ) : (
+              <>
+                Find Cleanest Window <ArrowRight size={16} />
+              </>
+            )}
           </button>
         </div>
       </form>
