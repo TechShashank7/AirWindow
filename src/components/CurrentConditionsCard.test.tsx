@@ -80,7 +80,10 @@ describe('CurrentConditionsCard', () => {
       expect(screen.getByText(/Universal AQI \(UAQI\):/i)).toBeInTheDocument();
       expect(screen.getByText(/74 \/ 100/i)).toBeInTheDocument();
       expect(screen.getByText(/With this level of air quality, you have no limitations/i)).toBeInTheDocument();
-      expect(screen.getByText(/Hyperlocal 500m derived model/i)).toBeInTheDocument();
+      expect(screen.getByText(/Current Pollutant Concentrations:/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Google Maps Platform/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Hyperlocal 500m derived model/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Google Model/i)).not.toBeInTheDocument();
     });
   });
 });

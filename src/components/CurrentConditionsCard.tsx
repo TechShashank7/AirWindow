@@ -84,11 +84,10 @@ export function CurrentConditionsCard({ location }: CurrentConditionsCardProps) 
             <Info size={18} className="text-muted-icon" />
             <h4>Current Conditions & National AQI</h4>
           </div>
-          <span className="source-tag">Google Maps Platform</span>
         </div>
         <p className="current-aqi-unavailable-note">
           Current atmospheric conditions and National AQI are currently unavailable for this location.
-          Open-Meteo 48-hour forecasts and regional model maps remain fully active below.
+          48-hour forecasts and regional air quality maps remain fully active below.
         </p>
       </div>
     );
@@ -115,10 +114,11 @@ export function CurrentConditionsCard({ location }: CurrentConditionsCardProps) 
           <Sparkles size={18} className="text-amber" />
           <h4>Current Conditions & National AQI</h4>
         </div>
-        <div className="current-aqi-badges">
-          {data.cached && <span className="cache-chip">Cached</span>}
-          <span className="source-tag">Google Maps Platform</span>
-        </div>
+        {data.cached && (
+          <div className="current-aqi-badges">
+            <span className="cache-chip">Cached</span>
+          </div>
+        )}
       </div>
 
       <div className="current-aqi-body">
@@ -165,7 +165,7 @@ export function CurrentConditionsCard({ location }: CurrentConditionsCardProps) 
         {/* Pollutants concentration grid */}
         {data.pollutants && data.pollutants.length > 0 && (
           <div className="current-pollutants-section">
-            <span className="pollutants-section-title">Current Pollutant Concentrations (Google Model):</span>
+            <span className="pollutants-section-title">Current Pollutant Concentrations:</span>
             <div className="current-pollutants-grid">
               {data.pollutants.map((p) => (
                 <div key={p.code} className="pollutant-chip">
@@ -192,20 +192,13 @@ export function CurrentConditionsCard({ location }: CurrentConditionsCardProps) 
           </div>
         )}
 
-        {/* Timestamps & Provenance Disclosures */}
+        {/* Timestamps */}
         <div className="current-aqi-footer">
           <div className="time-info">
             <Clock size={13} />
             <span>
               Observation estimated for <strong>{formattedTime}</strong>
               {data.ageHours !== null ? ` (~${data.ageHours}h ago)` : ''}
-            </span>
-          </div>
-          <div className="provenance-disclosure">
-            <Info size={13} />
-            <span>
-              Hyperlocal 500m derived model via Google Maps Platform Air Quality API.
-              Not a direct single-hardware station reading. For certified physical sensor data, see the Ground Stations map tab.
             </span>
           </div>
         </div>
