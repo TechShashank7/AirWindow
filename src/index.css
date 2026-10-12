@@ -81,7 +81,7 @@ a:hover { text-decoration: underline; }
 .search-wrap { position: relative; width: 100%; max-width: 460px; }
 .search-input {
   width: 100%;
-  padding: 12px 16px 12px 44px;
+  padding: 12px 48px 12px 44px;
   border: 2px solid #e2e8f0;
   border-radius: 50px;
   font-size: 0.95rem;
@@ -104,12 +104,119 @@ a:hover { text-decoration: underline; }
   pointer-events: none;
   display: flex;
 }
-.search-spinner {
+.search-controls-right {
   position: absolute;
-  right: 14px; top: 50%;
+  right: 10px; top: 50%;
   transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.search-spinner {
   color: #2563eb;
   display: flex;
+  align-items: center;
+}
+.btn-locate {
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-locate:hover:not(:disabled) {
+  background: #eff6ff;
+  color: #2563eb;
+}
+.btn-locate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-locate.locating {
+  color: #2563eb;
+}
+
+/* ── Hero Locate Button ─────────────────────────────────────── */
+.hero-locate-wrap {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+.btn-hero-locate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 50px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.08);
+}
+.btn-hero-locate:hover:not(:disabled) {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.25);
+  transform: translateY(-1px);
+}
+.btn-hero-locate:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ── Geolocation Notice / Error Banner ───────────────────────── */
+.geo-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff7ed;
+  border: 1px solid #ffedd5;
+  border-left: 4px solid #ea580c;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  animation: fadeUp 0.3s ease-out both;
+}
+.geo-error-content {
+  flex: 1;
+}
+.geo-error-content strong {
+  display: block;
+  font-size: 0.9rem;
+  color: #9a3412;
+  margin-bottom: 2px;
+}
+.geo-error-content p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #c2410c;
+  line-height: 1.4;
+}
+.btn-geo-error-dismiss {
+  background: transparent;
+  border: none;
+  color: #9a3412;
+  font-size: 1.25rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.btn-geo-error-dismiss:hover {
+  opacity: 1;
 }
 .dropdown {
   position: absolute;

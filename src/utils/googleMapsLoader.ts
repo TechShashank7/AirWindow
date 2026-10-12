@@ -1,5 +1,16 @@
 let googleMapsPromise: Promise<typeof google> | null = null;
 
+export function getGoogleMapsApiKey(): string {
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
+    return '';
+  }
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    if (import.meta.env.MODE === 'test') return '';
+    return (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() || '';
+  }
+  return '';
+}
+
 export function loadGoogleMaps(apiKey: string): Promise<typeof google> {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('Window is not available'));
@@ -27,7 +38,11 @@ export function loadGoogleMaps(apiKey: string): Promise<typeof google> {
       settled = true;
       try {
         if ((window as any).google?.maps?.importLibrary) {
-          await (window as any).google.maps.importLibrary('maps');
+          await Promise.allSettled([
+            (window as any).google.maps.importLibrary('maps'),
+            (window as any).google.maps.importLibrary('places'),
+            (window as any).google.maps.importLibrary('geocoding'),
+          ]);
         }
         delete (window as any)[callbackName];
         resolve((window as any).google);
@@ -76,7 +91,7 @@ export function loadGoogleMaps(apiKey: string): Promise<typeof google> {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callbackName}&v=weekly`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&callback=${callbackName}&v=weekly`;
     script.async = true;
     script.defer = true;
     script.onerror = (err) => {

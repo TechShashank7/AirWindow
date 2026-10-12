@@ -1,18 +1,73 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Loader2 } from 'lucide-react';
-import { searchLocations } from '../api/openmeteo';
+import { Search, MapPin, Loader2, Navigation } from 'lucide-react';
 import type { LocationResult } from '../api/openmeteo';
+import { getBrowserCoordinates, reverseGeocodeCoordinates } from '../utils/geolocation';
+import {
+  searchLocationsWithFallback,
+  resolveLocationCoordinates,
+  type SearchResultItem,
+} from '../utils/locationSearch';
 
 interface SearchBarProps {
   onSelect: (location: LocationResult) => void;
+  onLocateStart?: () => void;
+  onLocateEnd?: () => void;
+  onLocateError?: (error: string) => void;
+  isExternalLocating?: boolean;
 }
 
-export function SearchBar({ onSelect }: SearchBarProps) {
+export function SearchBar({
+  onSelect,
+  onLocateStart,
+  onLocateEnd,
+  onLocateError,
+  isExternalLocating = false,
+}: SearchBarProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<LocationResult[]>([]);
+  const [results, setResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [internalLocating, setInternalLocating] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const isLocating = isExternalLocating || internalLocating;
+
+  const handleUseMyLocation = async () => {
+    setInternalLocating(true);
+    onLocateStart?.();
+    setShowDropdown(false);
+    try {
+      const coords = await getBrowserCoordinates();
+      const loc = await reverseGeocodeCoordinates(coords.latitude, coords.longitude);
+      setQuery(loc.name);
+      onSelect(loc);
+    } catch (err: any) {
+      const msg = err?.message || 'Unable to determine your location. Please search manually.';
+      onLocateError?.(msg);
+    } finally {
+      setInternalLocating(false);
+      onLocateEnd?.();
+    }
+  };
+
+  const handleSelectResult = async (item: SearchResultItem) => {
+    setShowDropdown(false);
+    setQuery(item.name);
+    if (item.placeId && (item.latitude === 0 || item.longitude === 0)) {
+      setLoading(true);
+      try {
+        const resolved = await resolveLocationCoordinates(item);
+        onSelect(resolved);
+      } catch (e) {
+        console.error('Error resolving place coordinates:', e);
+        onSelect(item);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      onSelect(item);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -29,7 +84,7 @@ export function SearchBar({ onSelect }: SearchBarProps) {
       if (query.length > 2) {
         setLoading(true);
         try {
-          const res = await searchLocations(query);
+          const res = await searchLocationsWithFallback(query);
           setResults(res);
           setShowDropdown(true);
         } catch (e) {
@@ -41,7 +96,7 @@ export function SearchBar({ onSelect }: SearchBarProps) {
         setResults([]);
         setShowDropdown(false);
       }
-    }, 400);
+    }, 350);
     return () => clearTimeout(t);
   }, [query]);
 
@@ -61,11 +116,27 @@ export function SearchBar({ onSelect }: SearchBarProps) {
         aria-autocomplete="list"
         aria-expanded={showDropdown}
       />
-      {loading && (
-        <span className="search-spinner">
-          <Loader2 size={18} className="spin" />
-        </span>
-      )}
+      <div className="search-controls-right">
+        {loading && (
+          <span className="search-spinner" aria-hidden="true">
+            <Loader2 size={16} className="spin" />
+          </span>
+        )}
+        <button
+          type="button"
+          className={`btn-locate ${isLocating ? 'locating' : ''}`}
+          onClick={handleUseMyLocation}
+          disabled={isLocating}
+          title="Use my current location"
+          aria-label="Use my current location"
+        >
+          {isLocating ? (
+            <Loader2 size={16} className="spin" />
+          ) : (
+            <Navigation size={16} />
+          )}
+        </button>
+      </div>
 
       {showDropdown && (
         <div className="dropdown" role="listbox">
@@ -75,11 +146,7 @@ export function SearchBar({ onSelect }: SearchBarProps) {
                 <li
                   key={loc.id}
                   role="option"
-                  onClick={() => {
-                    onSelect(loc);
-                    setShowDropdown(false);
-                    setQuery(loc.name);
-                  }}
+                  onClick={() => handleSelectResult(loc)}
                 >
                   <span className="dropdown-pin"><MapPin size={15} /></span>
                   <div>

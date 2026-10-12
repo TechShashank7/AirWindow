@@ -12,15 +12,18 @@ import { isBackendEnabled, callEvaluateApi } from './api/evaluateApi';
 import type { LocationResult } from './api/openmeteo';
 import { processForecastData, getBestTimeWindow } from './utils/recommendation';
 import type { DataPoint, RecommendationResult } from './utils/recommendation';
-import { Wind, AlertCircle, Info, Bell } from 'lucide-react';
+import { Wind, AlertCircle, Info, Bell, Navigation } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { format, parseISO } from 'date-fns';
+import { getBrowserCoordinates, reverseGeocodeCoordinates } from './utils/geolocation';
 
 function App() {
   const [location, setLocation] = useState<LocationResult | null>(null);
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
 
   // Air Alerts modal state
@@ -66,6 +69,20 @@ function App() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUseCurrentLocation = async () => {
+    setIsLocating(true);
+    setGeoError(null);
+    try {
+      const coords = await getBrowserCoordinates();
+      const loc = await reverseGeocodeCoordinates(coords.latitude, coords.longitude);
+      await handleLocationSelect(loc);
+    } catch (err: any) {
+      setGeoError(err?.message || 'Unable to determine your location. Please search for your city manually.');
+    } finally {
+      setIsLocating(false);
     }
   };
 
@@ -127,7 +144,16 @@ function App() {
             <span className="brand-name">AirWindow</span>
           </a>
           <div className="header-actions">
-            <SearchBar onSelect={handleLocationSelect} />
+            <SearchBar
+              onSelect={handleLocationSelect}
+              onLocateStart={() => {
+                setIsLocating(true);
+                setGeoError(null);
+              }}
+              onLocateEnd={() => setIsLocating(false)}
+              onLocateError={(err) => setGeoError(err)}
+              isExternalLocating={isLocating}
+            />
             <button
               type="button"
               className="btn-alert-nav"
@@ -148,8 +174,27 @@ function App() {
       {/* ─── Main ───────────────────────────────────────────────── */}
       <main className="main">
 
+        {/* Geolocation Error */}
+        {geoError && (
+          <div className="geo-error-banner" role="alert">
+            <AlertCircle size={20} style={{ flexShrink: 0, marginTop: 2, color: '#ea580c' }} />
+            <div className="geo-error-content">
+              <strong>Location Notice</strong>
+              <p>{geoError}</p>
+            </div>
+            <button
+              type="button"
+              className="btn-geo-error-dismiss"
+              onClick={() => setGeoError(null)}
+              aria-label="Dismiss error notification"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Empty state */}
-        {!location && !loading && (
+        {!location && !loading && !isLocating && (
           <div className="hero">
             <div className="hero-icon-wrap">
               <Wind size={48} color="#2563eb" />
@@ -159,6 +204,25 @@ function App() {
               Search for any city to view a 48-hour air quality forecast and
               find the cleanest time window for your outdoor activity.
             </p>
+            <div className="hero-locate-wrap">
+              <button
+                type="button"
+                className="btn-hero-locate"
+                onClick={handleUseCurrentLocation}
+                disabled={isLocating}
+              >
+                <Navigation size={17} />
+                <span>Use My Location</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Geolocation Loading */}
+        {isLocating && (
+          <div className="loader-wrap">
+            <div className="loader-ring" />
+            <p className="loader-text pulse">Resolving your location & timezone…</p>
           </div>
         )}
 

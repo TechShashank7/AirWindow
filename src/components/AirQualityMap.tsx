@@ -3,7 +3,7 @@ import type { LocationResult } from '../api/openmeteo';
 import { fetchSpatialForecastGrid } from '../api/openmeteo';
 import type { GridPoint } from '../utils/mapGrid';
 import { getTierForPM25, getTierForScore, getTierForPM10 } from '../utils/mapGrid';
-import { loadGoogleMaps } from '../utils/googleMapsLoader';
+import { loadGoogleMaps, getGoogleMapsApiKey } from '../utils/googleMapsLoader';
 import { MapPin, Info, RefreshCw, AlertTriangle, Wind, Compass } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -22,9 +22,8 @@ export function AirQualityMap({ location }: AirQualityMapProps) {
   const [selectedPointId, setSelectedPointId] = useState<string>('center');
   const [metric, setMetric] = useState<MetricMode>('pm25');
 
-  // Read Google Maps API key from Vite environment variables (e.g. AWS Amplify or .env.local)
-  const isTestEnv = import.meta.env.MODE === 'test';
-  const googleApiKey = (!isTestEnv && (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim()) || '';
+  // Read Google Maps API key via centralized helper
+  const googleApiKey = getGoogleMapsApiKey();
   const [activeEngine, setActiveEngine] = useState<'google' | 'leaflet'>(googleApiKey ? 'google' : 'leaflet');
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
