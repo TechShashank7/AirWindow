@@ -44,62 +44,7 @@ Traditional weather and AQI dashboards are fundamentally **passive and reactive*
 ## 🏗️ AWS Cloud Architecture
 
 AirWindow is built on an enterprise-grade, event-driven, **100% serverless AWS architecture** engineered for high throughput, sub-50ms latency, least-privilege security, and resilient failover.
-
-```mermaid
-flowchart TD
-    subgraph ClientLayer["1. Client and Edge Layer"]
-        User["User Browser<br/>React 19 and TypeScript"]
-        Amplify["AWS Amplify Hosting<br/>Global CDN Edge"]
-    end
-
-    subgraph ApiLayer["2. API and Compute Layer"]
-        APIGW["Amazon API Gateway<br/>HTTP API with CORS"]
-        LambdaEval["AWS Lambda: AirWindowEvaluate<br/>Forecast Engine and NAQI"]
-        LambdaAlerts["AWS Lambda: AirWindowAlertsApi<br/>SHA-256 Auth and Subscriptions"]
-    end
-
-    subgraph DataLayer["3. Data and Caching Layer"]
-        DDBForecast["Amazon DynamoDB<br/>AirWindow-ForecastCache"]
-        DDBAlerts["Amazon DynamoDB<br/>AirWindow-Alerts"]
-        ExtAPIs["External Weather and AQI APIs<br/>Atmospheric and Ground Observations"]
-    end
-
-    subgraph AlertPipeline["4. Automated Event-Driven Pipeline"]
-        EventBridge["Amazon EventBridge<br/>Hourly Cron Trigger"]
-        LambdaCron["AWS Lambda: AirWindowAlertsEvaluator<br/>12h Spike Detector"]
-        SQS["Amazon SQS<br/>AirWindow-AlertsQueue"]
-        LambdaWorker["AWS Lambda: AirWindowSesWorker<br/>Batch Consumer"]
-        SES["Amazon Simple Email Service<br/>Transactional Email Delivery"]
-    end
-
-    subgraph Observability["5. Observability and Security"]
-        CloudWatch["Amazon CloudWatch<br/>Logs and Custom EMF Metrics"]
-        IAM["AWS IAM<br/>Least-Privilege Role Policies"]
-    end
-
-    User -->|"1. Loads SPA"| Amplify
-    User -->|"2. /evaluate, /current-aqi, /observations"| APIGW
-    User -->|"3. /alerts API requests"| APIGW
-    APIGW -->|"Proxy"| LambdaEval
-    APIGW -->|"Proxy"| LambdaAlerts
-
-    LambdaEval <-->|"4. Read/Write 6h TTL Cache"| DDBForecast
-    LambdaEval -->|"5. Upstream Fetch on Miss"| ExtAPIs
-    LambdaAlerts <-->|"6. Atomic Transactions"| DDBAlerts
-
-    EventBridge -->|"7. Hourly Cron Event"| LambdaCron
-    LambdaCron -->|"8. Query Active Subscriptions"| DDBAlerts
-    LambdaCron -->|"9. Check Forecast Spikes"| DDBForecast
-    LambdaCron -->|"10. Enqueue Verified Breaches"| SQS
-    SQS -->|"11. SQS Batch Event"| LambdaWorker
-    LambdaWorker -->|"12. Deliver Notification"| SES
-    SES -->|"13. Dispatch Email to User"| User
-
-    LambdaEval -.-> CloudWatch
-    LambdaAlerts -.-> CloudWatch
-    LambdaCron -.-> CloudWatch
-    LambdaWorker -.-> CloudWatch
-```
+![AirWindow AWS Cloud Architecture](docs/architecture.png)
 
 ---
 
