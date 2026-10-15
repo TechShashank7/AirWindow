@@ -36,7 +36,6 @@ Traditional weather and AQI dashboards are fundamentally **passive and reactive*
 | 🎯 **Optimal Window Finder** | Select activity duration (30, 60, or 90 mins) and a preferred time range. The algorithm scores sliding windows across 48 hours to pinpoint the cleanest time slot. |
 | 🇮🇳 **India National AQI (NAQI)** | Computes official Central Pollution Control Board (CPCB) sub-indices and dominant pollutant categories alongside global universal AQI metrics. |
 | 📊 **Dual Trend Visualization** | Interactive 48-hour forecast chart showing PM2.5, PM10, and wind speed trends with custom tooltips, worst/cleanest visual tags, and time cursor scrubbing. |
-| 🗺️ **Dual-Engine Map** | Seamless fallback between Google Maps Platform (with custom styled pins) and Leaflet / OpenStreetMap for 9-point spatial forecast grids and certified ground monitors. |
 | ⚠️ **12-Hour Early Warning** | Automated spike detector warning users up to 12 hours before dangerous air quality surges occur. |
 | 🔔 **Personalized Alerts** | Users subscribe to location-specific thresholds with zero friction. Powered by SHA-256 token authentication (no plaintext passwords stored). |
 
@@ -48,69 +47,58 @@ AirWindow is built on an enterprise-grade, event-driven, **100% serverless AWS a
 
 ```mermaid
 flowchart TD
-    subgraph CLIENT["1. Client & Edge Layer"]
-        User["👤 User Browser<br/>(React 19 + TypeScript + Vite)"]
-        Amplify["⚡ AWS Amplify Hosting<br/>(Global CDN Edge + CI/CD)"]
-        User -->|1. Loads SPA| Amplify
+    subgraph ClientLayer["1. Client and Edge Layer"]
+        User["User Browser<br/>React 19 and TypeScript"]
+        Amplify["AWS Amplify Hosting<br/>Global CDN Edge"]
     end
 
-    subgraph API["2. API & Compute Layer"]
-        APIGW["🚪 Amazon API Gateway<br/>(HTTP API with CORS)"]
-        LambdaEval["⚙️ AWS Lambda: AirWindowEvaluate<br/>(Forecast Engine & NAQI Logic)"]
-        LambdaAlerts["🔑 AWS Lambda: AirWindowAlertsApi<br/>(SHA-256 Auth & Subscriptions)"]
-        
-        User -->|2. /evaluate, /current-aqi, /observations| APIGW
-        User -->|3. /alerts (Subscribe, Manage, Verify)| APIGW
-        APIGW -->|Proxy| LambdaEval
-        APIGW -->|Proxy| LambdaAlerts
+    subgraph ApiLayer["2. API and Compute Layer"]
+        APIGW["Amazon API Gateway<br/>HTTP API with CORS"]
+        LambdaEval["AWS Lambda: AirWindowEvaluate<br/>Forecast Engine and NAQI"]
+        LambdaAlerts["AWS Lambda: AirWindowAlertsApi<br/>SHA-256 Auth and Subscriptions"]
     end
 
-    subgraph DATA["3. Data & Caching Layer"]
-        DDBForecast["🗄️ Amazon DynamoDB<br/>AirWindow-ForecastCache (TTL)"]
-        DDBAlerts["🗄️ Amazon DynamoDB<br/>AirWindow-Alerts (StatusIndex GSI)"]
-        ExtAPIs["🌐 External Weather & Air Quality APIs<br/>(Open-Meteo • OpenAQ v3)"]
-
-        LambdaEval <-->|4. Read/Write Cache (6h TTL)| DDBForecast
-        LambdaEval -->|5. Cache Miss Fallback| ExtAPIs
-        LambdaAlerts <-->|6. Atomic Transactions| DDBAlerts
+    subgraph DataLayer["3. Data and Caching Layer"]
+        DDBForecast["Amazon DynamoDB<br/>AirWindow-ForecastCache"]
+        DDBAlerts["Amazon DynamoDB<br/>AirWindow-Alerts"]
+        ExtAPIs["External Weather and AQI APIs<br/>Atmospheric and Ground Observations"]
     end
 
-    subgraph ALERTS["4. Automated Event-Driven Pipeline"]
-        EventBridge["⏱️ Amazon EventBridge<br/>(Hourly Cron Trigger)"]
-        LambdaCron["🔍 AWS Lambda: AirWindowAlertsEvaluator<br/>(12h Spike Detector)"]
-        SQS["📬 Amazon SQS<br/>AirWindow-AlertsQueue (Dead Letter)"]
-        LambdaWorker["👷 AWS Lambda: AirWindowSesWorker<br/>(Batch Consumer)"]
-        SES["✉️ Amazon Simple Email Service (SES)<br/>(Instant Email Delivery)"]
-
-        EventBridge -->|7. Hourly Trigger| LambdaCron
-        LambdaCron -->|8. Query Active Subscriptions| DDBAlerts
-        LambdaCron -->|9. Check Forecast Spikes| DDBForecast
-        LambdaCron -->|10. Enqueue Verified Breaches| SQS
-        SQS -->|11. Batch Trigger| LambdaWorker
-        LambdaWorker -->|12. Send Alert Notification| SES
-        SES -->|13. Warning Email with Manage Link| User
+    subgraph AlertPipeline["4. Automated Event-Driven Pipeline"]
+        EventBridge["Amazon EventBridge<br/>Hourly Cron Trigger"]
+        LambdaCron["AWS Lambda: AirWindowAlertsEvaluator<br/>12h Spike Detector"]
+        SQS["Amazon SQS<br/>AirWindow-AlertsQueue"]
+        LambdaWorker["AWS Lambda: AirWindowSesWorker<br/>Batch Consumer"]
+        SES["Amazon Simple Email Service<br/>Transactional Email Delivery"]
     end
 
-    subgraph OBS["5. Observability & Security"]
-        CloudWatch["📊 Amazon CloudWatch<br/>(Structured Logs & Custom EMF Metrics)"]
-        IAM["🛡️ AWS IAM<br/>(Least-Privilege Role Policies)"]
-        
-        LambdaEval -.->|Metrics| CloudWatch
-        LambdaAlerts -.->|Metrics| CloudWatch
-        LambdaCron -.->|EMF Logs| CloudWatch
-        LambdaWorker -.->|EMF Logs| CloudWatch
+    subgraph Observability["5. Observability and Security"]
+        CloudWatch["Amazon CloudWatch<br/>Logs and Custom EMF Metrics"]
+        IAM["AWS IAM<br/>Least-Privilege Role Policies"]
     end
 
-    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#232F3E;
-    classDef client fill:#EBF8FF,stroke:#3182CE,stroke-width:2px,color:#2B6CB0;
-    classDef comp fill:#ED8936,stroke:#7B341E,stroke-width:2px,color:#FFFFFF;
-    classDef store fill:#4FD1C5,stroke:#234E52,stroke-width:2px,color:#1D4044;
-    classDef alert fill:#FC8181,stroke:#742A2A,stroke-width:2px,color:#FFFFFF;
+    User -->|"1. Loads SPA"| Amplify
+    User -->|"2. /evaluate, /current-aqi, /observations"| APIGW
+    User -->|"3. /alerts API requests"| APIGW
+    APIGW -->|"Proxy"| LambdaEval
+    APIGW -->|"Proxy"| LambdaAlerts
 
-    class Amplify,APIGW comp;
-    class LambdaEval,LambdaAlerts,LambdaCron,LambdaWorker comp;
-    class DDBForecast,DDBAlerts store;
-    class EventBridge,SQS,SES alert;
+    LambdaEval <-->|"4. Read/Write 6h TTL Cache"| DDBForecast
+    LambdaEval -->|"5. Upstream Fetch on Miss"| ExtAPIs
+    LambdaAlerts <-->|"6. Atomic Transactions"| DDBAlerts
+
+    EventBridge -->|"7. Hourly Cron Event"| LambdaCron
+    LambdaCron -->|"8. Query Active Subscriptions"| DDBAlerts
+    LambdaCron -->|"9. Check Forecast Spikes"| DDBForecast
+    LambdaCron -->|"10. Enqueue Verified Breaches"| SQS
+    SQS -->|"11. SQS Batch Event"| LambdaWorker
+    LambdaWorker -->|"12. Deliver Notification"| SES
+    SES -->|"13. Dispatch Email to User"| User
+
+    LambdaEval -.-> CloudWatch
+    LambdaAlerts -.-> CloudWatch
+    LambdaCron -.-> CloudWatch
+    LambdaWorker -.-> CloudWatch
 ```
 
 ---
@@ -243,9 +231,6 @@ This generates `lambda-deployment.zip` containing all Lambda handlers, dependenc
 
 ---
 
-## 📄 License & Acknowledgments
+## 📄 License
 
-- **License:** Distributed under the MIT License.
-- **Atmospheric Modeling:** [Open-Meteo Air Quality API](https://open-meteo.com/)
-- **Ground Sensor Observations:** [OpenAQ v3](https://openaq.org/)
-- **Geocoding & Maps:** Google Maps Platform & OpenStreetMap / Leaflet
+Distributed under the MIT License.
