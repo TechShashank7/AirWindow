@@ -23,6 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 *.zip
+aws-architecture*
 .env
 .env.local
 .env.*.local
